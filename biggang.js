@@ -1,3 +1,5 @@
+// This script is all the gang related functions in one place. The normal gang.js and subscripts allow for lower ram-use
+
 const /* Pretty Colours!*/ r = "\x1b[31m", gr = "\x1b[32m";
 
 function recruit(g, n) {
