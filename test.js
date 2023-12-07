@@ -1,4 +1,4 @@
 /** @param {NS} ns */
 export async function main(ns) {
-	ns.tprintf("%%")
+	ns.tprint(ns.peek(ns.getRunningScript("loop/prsm.js").pid))
 }

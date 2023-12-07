@@ -329,7 +329,7 @@ export async function prsm(ns) {
 		server_list.forEach(server => ns.scp(["hack.js", "grow.js", "wekn.js"], server));
 		jobs_array.forEach(script => {
 			host_list.forEach(host => { // Iterate through hosts and fill each one with jobs until done
-				const sendJobs = (jobs_needed, host_threads) => {
+				const sendJobs = (jobs_needed, host_threads,dummy_player) => {
 					const threads = host_threads < jobs_needed ? host_threads : jobs_needed,
 						host_threads_left = host_threads - threads,
 						jobs_needed_left = jobs_needed - threads;
@@ -337,7 +337,7 @@ export async function prsm(ns) {
 					(threads > 0 && ns.exec(`${script.name}.js`, host, threads, target.hostname, script.time))
 						dummy_player.exp.hacking += ns.formulas.hacking.hackExp(target, dummy_player) * threads,
 						dummy_player.skills.hacking = ns.formulas.skills.calculateSkill(dummy_player.exp.hacking, ns.getPlayer().mults.hacking_exp),
-						jobs_needed_left > 0 && host_threads_left > 1 && sendJobs(jobs_needed_left, host_threads_left)
+						jobs_needed_left > 0 && host_threads_left > 1 && sendJobs(jobs_needed_left, host_threads_left,dummy_player)
 				};
 				const threads_available = host_list.map(server => Math.floor(ramCalc(server) / ns.getScriptRam(`${script.name}.js`))).reduce((threads, sum) => threads + sum),
 					ratio = threads_available / batch_total,

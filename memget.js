@@ -1,13 +1,14 @@
-import {ramFormat} from "func.js"
+import { ramFormat } from "func.js";
 /** @param {NS} ns */
 export async function main(ns) {
-	let lsvar = ns.ls("home",".js")
-	let scriptlist = []
-	let ramlist = []
-	for (let script of lsvar) {
-		scriptlist.push(ramFormat(ns.getScriptRam(script)) + " - " + script)
-	}
-	for (let script of scriptlist) {
-		ns.tprint(script)
-	}
+    let lsvar = ns.ls("home", ".js");
+    let scriptlist = [];
+    let ramlist = [];
+    for (let script of lsvar) {
+        scriptlist.push(ramFormat(ns.getScriptRam(script)) + " - " + script);
+    }
+    for (let script of scriptlist) {
+        ns.tprint(script);
+    }
 }
+//# sourceMappingURL=data:application/json;base64,eyJ2ZXJzaW9uIjozLCJmaWxlIjoibWVtZ2V0LmpzIiwic291cmNlUm9vdCI6IiIsInNvdXJjZXMiOlsiLi4vc3JjL21lbWdldC5qcyJdLCJuYW1lcyI6W10sIm1hcHBpbmdzIjoiQUFBQSxPQUFPLEVBQUMsU0FBUyxFQUFDLE1BQU0sU0FBUyxDQUFBO0FBQ2pDLHFCQUFxQjtBQUNyQixNQUFNLENBQUMsS0FBSyxVQUFVLElBQUksQ0FBQyxFQUFFO0lBQzVCLElBQUksS0FBSyxHQUFHLEVBQUUsQ0FBQyxFQUFFLENBQUMsTUFBTSxFQUFDLEtBQUssQ0FBQyxDQUFBO0lBQy9CLElBQUksVUFBVSxHQUFHLEVBQUUsQ0FBQTtJQUNuQixJQUFJLE9BQU8sR0FBRyxFQUFFLENBQUE7SUFDaEIsS0FBSyxJQUFJLE1BQU0sSUFBSSxLQUFLLEVBQUU7UUFDekIsVUFBVSxDQUFDLElBQUksQ0FBQyxTQUFTLENBQUMsRUFBRSxDQUFDLFlBQVksQ0FBQyxNQUFNLENBQUMsQ0FBQyxHQUFHLEtBQUssR0FBRyxNQUFNLENBQUMsQ0FBQTtLQUNwRTtJQUNELEtBQUssSUFBSSxNQUFNLElBQUksVUFBVSxFQUFFO1FBQzlCLEVBQUUsQ0FBQyxNQUFNLENBQUMsTUFBTSxDQUFDLENBQUE7S0FDakI7QUFDRixDQUFDIiwic291cmNlc0NvbnRlbnQiOlsiaW1wb3J0IHtyYW1Gb3JtYXR9IGZyb20gXCJmdW5jLmpzXCJcbi8qKiBAcGFyYW0ge05TfSBucyAqL1xuZXhwb3J0IGFzeW5jIGZ1bmN0aW9uIG1haW4obnMpIHtcblx0bGV0IGxzdmFyID0gbnMubHMoXCJob21lXCIsXCIuanNcIilcblx0bGV0IHNjcmlwdGxpc3QgPSBbXVxuXHRsZXQgcmFtbGlzdCA9IFtdXG5cdGZvciAobGV0IHNjcmlwdCBvZiBsc3Zhcikge1xuXHRcdHNjcmlwdGxpc3QucHVzaChyYW1Gb3JtYXQobnMuZ2V0U2NyaXB0UmFtKHNjcmlwdCkpICsgXCIgLSBcIiArIHNjcmlwdClcblx0fVxuXHRmb3IgKGxldCBzY3JpcHQgb2Ygc2NyaXB0bGlzdCkge1xuXHRcdG5zLnRwcmludChzY3JpcHQpXG5cdH1cbn0iXX0=

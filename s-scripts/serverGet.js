@@ -1,1 +1,0 @@
-export let main=(n,m=new Set(["home"]))=>{m.forEach(h=>n.scan(h).map(s=>m.add(s)));n.writePort(n.pid,[...m]+"")}

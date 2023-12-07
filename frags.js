@@ -1,0 +1,1 @@
+[{"id":0,"x":0,"y":0,"highestCharge":65435,"numCharge":781.9447696187107,"rotation":3}]
