@@ -25,11 +25,11 @@ function minSkill(ns, p = ns.getPlayer().skills) { return Math.min(p["strength"]
 export const ramFormat = ram => (ram < 1e3) ? ram.toFixed(2) + "GB" : (ram < 1e6) ? (ram / 1e3).toFixed(2) + "TB" : (ram / 1e6).toFixed(2) + "PB";
 export function factionJoin(n, s = n.singularity) { (s.checkFactionInvitations().forEach(f => (s.joinFaction(f), n.tprintf(`${c.m}Joined ${f}`)))) };
 export function darkwebShopping(n) { ["BruteSSH", "FTPCrack", "relaySMTP", "HTTPWorm", "SQLInject"].forEach(prog => n.singularity.purchaseProgram(`${prog}.exe`)) };
-export function busyCheck(ns) { return ns.singularity.getCurrentWork()?.type == "GRAFTING" || (ns.bladeburner.inBladeburner() && !!ns.bladeburner.getCurrentAction().name) };
+export function isBusy(ns) { return ns.singularity.getCurrentWork()?.type == "GRAFTING" || (ns.bladeburner.inBladeburner() && !!ns.bladeburner.getCurrentAction().name) };
 export function getCurrentNode(ns) { return `${ns.getResetInfo().currentNode}.${++ns.singularity.getOwnedSourceFiles().filter(sf => sf.n == ns.getResetInfo().currentNode)[0].lvl}` };
 export const t = (r = Date.now(), c = (t, d = 60, v = r / t % d | 0) => v <= 9 ? "0" + v : v) => (r < 864e5 ? "" : c(864e5, 1 / 0) + "-") + c(36e5, 24) + ":" + c(6e4) + ":" + c(1e3);
 export function grindStats(ns, fact = "The Black Hand", s = ns.singularity) { s.stopAction(); s.workForFaction(fact, "field", 0); ns.write("logs/workReport.txt", "Grinding stats", "w") };
-export function murderate(ns, s = ns.singularity) { !busyCheck(ns) && (ns.heart.break() > -54000 || ns.getPlayer().numPeopleKilled > 30) && (s.stopAction(), s.commitCrime("Homicide", 0)) };
+export function murderate(ns, s = ns.singularity) { !isBusy(ns) && (ns.heart.break() > -54000 || ns.getPlayer().numPeopleKilled > 30) && (s.stopAction(), s.commitCrime("Homicide", 0)) };
 export function persuade(n, a = (s, p) => n.scan(s).forEach(v => v != p ? a(v, s) : [n.brutessh, n.ftpcrack, n.relaysmtp, n.sqlinject, n.httpworm, n.nuke].forEach(p => { try { p(s) } catch { } }))) { a("home") };
 export function d43m0nD357r0y(ns, s = ns.singularity, date = new Date(), wd = "w0r1d_d43m0n") { sGet(ns).includes(wd) && ns.getHackingLevel() > ns.getServerRequiredHackingLevel(wd) && (["installCounter.txt", "installAugsReason.txt", "installAugsLog.txt"].map(f => ns.rm(`logs/${f}`)), ns.write("logs/nodeLog.txt", `${getCurrentNode(ns)} completed  - ${date.toLocaleTimeString()} ${date.toLocaleDateString()}\n`), s.destroyW0r1dD43m0n(12, "rset.js")) }
 export function pServers(ns) { (ns.purchaseServer(ns.getPurchasedServers().length, 8) && ns.tprintf(`${c.c}Purchased host server ${ns.getPurchasedServers().length - 1}`)) || ns.getPurchasedServers().some(server => ns.upgradePurchasedServer(server, ns.getServerMaxRam(server) * 2)) && pServers(ns) };
@@ -72,7 +72,7 @@ export function writeLaunchers(ns) {
 }
 
 export function graft(ns, g = ns.grafting) {
-	!busyCheck(ns) && ns.singularity.travelToCity("New Tokyo") &&
+	!isBusy(ns) && ns.singularity.travelToCity("New Tokyo") &&
 		[
 			"QLink",
 			"ECorp HVMind Implant",
@@ -85,7 +85,7 @@ export function graft(ns, g = ns.grafting) {
 export function factWork(ns, s = ns.singularity) {
 	const available_augs = JSON.parse(ns.read("logs/availableAugs.txt"))
 	const target_faction = available_augs.some(a => a.aug == "The Red Pill") ? "Daedalus" : JSON.parse(ns.read("logs/availableAugs.txt")).filter(aug => aug.faction != "Slum Snakes").sort((a, b) => a.repdelta - b.repdelta)[0]?.faction;
-	!busyCheck(ns) && target_faction && (s.stopAction(), ["field", "security", "hacking"].some(job => s.workForFaction(target_faction, job, 0)))
+	!isBusy(ns) && target_faction && (s.stopAction(), ["field", "security", "hacking"].some(job => s.workForFaction(target_faction, job, 0)))
 }
 
 /** @param {NS} ns */
@@ -124,7 +124,7 @@ export function installAugs(ns, s = ns.singularity) {
 		checkTimeout = () => (time_since_last_aug > 3600000 && lowest_price > ns.getServerMoneyAvailable("home")) ? (writeLog(timeout_log)) : false,
 		hasTRP = () => bought_augs.includes("The Red Pill") && writeLog("installed TRP");
 	//check if busy and if there are augs to install and (if has trp or timed out or can hit favour breakpoint) then install
-	!busyCheck(ns) && !!bought_augs.length && (hasTRP() || checkTimeout() || checkFavour()) &&
+	!isBusy(ns) && !!bought_augs.length && (hasTRP() || checkTimeout() || checkFavour()) &&
 		(ns.write("logs/installCounter.txt", +(ns.read("logs/installCounter.txt")) + 1, "w"),
 			ns.write("logs/installAugsLog.txt", ns.read("logs/installAugsReason.txt") + "\n", "a"),
 			s.installAugmentations("rset.js"))
@@ -150,7 +150,9 @@ export function cityAugs(ns, s = ns.singularity) {
 		workFor = corp => (s.stopAction(), s.workForCompany(corp, false), ns.write("logs/workReport.txt", `Working at ${corp}`, "w")),
 		needAug = aug => !JSON.parse(ns.read("logs/ownedAugs.txt")).includes(aug);
 
-	!busyCheck(ns) &&
+	// behold 
+
+	!isBusy(ns) &&
 		(needAug("NutriGen Implant") ? s.travelToCity(cities.nt) :
 			needAug("INFRARET Enhancement") ? s.travelToCity(cities.is) :
 				needAug("Social Negotiation Assistant (S.N.A)") ? s.travelToCity(cities.nt) :
@@ -250,7 +252,7 @@ export function steves(ns, s = ns.sleeve, b = ns.bladeburner, g = ns.gang) {
 export async function bladeBurner(ns, b = ns.bladeburner) {
 	const upSkill = () => b.upgradeSkill(b.getSkillNames().sort((x, y) => b.getSkillUpgradeCost(x) - b.getSkillUpgradeCost(y))[0]) && upSkill();
 	b.joinBladeburnerDivision();
-	b.inBladeburner() && !busyCheck(ns) && (
+	b.inBladeburner() && !isBusy(ns) && (
 		upSkill(),
 		ns.singularity.stopAction(),
 		b.getBlackOpNames().forEach(op => (b.startAction("BlackOps", op))))
@@ -375,6 +377,10 @@ export async function prsm(ns) {
 
 /** @param {NS} ns */
 export async function gvnr(ns) {
+	ns.tail();
+	ns.disableLog('ALL');
+	ns.tprintf(`${c.m}** ./gvnr.js **`);
+	ns.print(`${c.r} *** LOADING ***`);
 	const peekyPorty = (script, data = ns.peek(ns.getRunningScript(script)?.pid ?? ns.pid)) => JSON.parse(data == "NULL PORT DATA" ? "[]" : data),
 		percColour = perc => (perc < 33 ? `${c.r}${perc}` : perc < 66 ? `${c.y}${perc}` : perc < 85 ? `${c.c}${perc}` : `${c.g}${perc}`).padStart(11, " "),
 		secColour = sec => (sec < 0 ? `${c.g}${sec}` : sec < 66 ? `${c.y}${sec}` : `${c.r}${sec}`).padStart(8, " "),
@@ -384,16 +390,8 @@ export async function gvnr(ns) {
 		getSecMin = ns.getServerMinSecurityLevel,
 		fmtNum = ns.formatNumber,
 		refresh_delay = 1,
-		cycle_delay = 30;
-	let
-		timer = 0,
-		is_first_start = true,
-		cycle_counter = 0;
-	ns.tail();
-	ns.disableLog('ALL')
-	ns.tprintf(`${c.m}** ./gvnr.js **`)
-	ns.print(`${c.r} *** LOADING ***`)
-	while (true) {
+		cycle_delay = 30,
+	 runLoop = async (timer = 0, is_first_start = true, cycle_counter = 0) => {
 		ns.moveTail(eval("window").innerWidth - 1300, 0)
 		ns.resizeTail(850, 1000);
 		// Run things every n sec
@@ -526,5 +524,7 @@ export async function gvnr(ns) {
 		is_first_start = false
 		timer += refresh_delay;
 		await ns.sleep(refresh_delay * 1000)
-	}
+	await runLoop(timer,false,cycle_counter)
+	};
+	await runLoop()
 }
