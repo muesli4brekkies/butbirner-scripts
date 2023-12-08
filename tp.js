@@ -1,1 +1,0 @@
-export let main=(n,r=[],s=n.singularity,w=t=>t!=="home"?(r.unshift(t),w(n.scan(t)[0])):r)=>w(n.args[0]).map(q=>s.connect(q));

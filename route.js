@@ -1,1 +1,0 @@
-export let main=(n,r=[],w=t=>t!="home"?(r.unshift(t),w(n.scan(t)[0])):r)=>n.tprint(...w(n.args[0]).map(s=>`connect ${s};`))
