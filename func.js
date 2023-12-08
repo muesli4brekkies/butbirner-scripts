@@ -401,7 +401,7 @@ export async function gvnr(ns) {
 				"solveallcontracts.js",
 			]) {
 				if (is_first_start) { ns.tprintf(`${c.y}starting ${script}`) }
-				let runpid = ns.run(script)
+				const runpid = ns.run(script)
 				if (runpid) {
 					await ns.getPortHandle(runpid).nextWrite();
 					if (is_first_start) { ns.tprintf(`${c.g}${script} passed init`) };
