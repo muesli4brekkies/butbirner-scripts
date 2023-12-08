@@ -407,7 +407,7 @@ export async function gvnr(ns) {
 				if (runpid) {
 					await ns.getPortHandle(runpid).nextWrite();
 					if (is_first_start) { ns.tprintf(`${c.g}${script} passed init`) };
-				} else { ns.tprintf(`${c.r}not enough ram for ${script}`) };
+				} else { ns.tprintf(`${c.r}!! ${script} DID NOT RUN !!`) };
 			}
 		}
 		LOOP_SCRIPTS.map(s => `loop/${s}.js`).forEach(script => !ns.isRunning(script) && (ns.run(script), ns.tprintf(`${c.y}starting ${script}`)));
