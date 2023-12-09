@@ -1,11 +1,15 @@
 // FUNCtions
+
+export function main(n) { (n.ps().forEach(s => n.closeTail(s.pid)), sGet(n).forEach(s => n.killall(s, 1)), !n.args.length && (writeLaunchers(n),n.run("gvnr.js"))) };
+
+
 const LOOP_FUNCTIONS = ["stan", "runGang", "prsm"];
 const ONESHOT_FUNCTIONS = [
 	"availableAugs",
 	"pServers",
 	"factWork",
 	"murderate",
-	"d43m0nD357r0y",
+	//"d43m0nD357r0y",
 	"ramUp",
 	"coresUp",
 	"darkwebShopping",
@@ -82,6 +86,7 @@ export function graft(ns, g = ns.grafting) {
 			"nickofolas Congruity Implant",
 		].some(aug => g.graftAugmentation(aug) && ns.write("logs/workReport.txt", `grafting ${aug}`, "w"));
 }
+
 /** @param {NS} ns */
 export function factWork(ns, s = ns.singularity) {
 	const available_augs = JSON.parse(ns.read("logs/availableAugs.txt"))
@@ -288,7 +293,7 @@ export async function runGang(n, g = n.gang) {
 		),
 		getBTDenom = () => g.getBonusTime() > 5000 ? 25 : 1,
 		runLoop = async () => (((g.inGang() || g.createGang(gang_name)) ? (
-			g.recruitMember(getRandomName()) && n.tprint(`${c.r}Recruited ${c.g}${getAvailableNames[getRandomName]}`),
+			((n = getRandomName()) => g.recruitMember(n) && n.tprint(`${c.r}Recruited ${c.g}${n}`))(),
 			g.setTerritoryWarfare(!Object.keys(other_gang_info()).filter(h => h !== gang_name).some(h => g.getChanceToWinClash(h) < .55)),
 			assignJob(),
 			await n.sleep(15000 / getBTDenom()),
@@ -391,7 +396,7 @@ export async function gvnr(ns) {
 				runpid ? (await ns.getPortHandle(runpid).nextWrite(), (is_first_start && ns.tprintf(`${c.g}${script} passed init`))) : ns.tprintf(`${c.r}!! ${script} DID NOT RUN !!`);
 			};
 			LOOP_FUNCTIONS.map(s => `loop/${s}.js`).forEach(script => !ns.isRunning(script) && (ns.run(script), ns.tprintf(`${c.y}starting ${script}`)));
-			is_first_start && (ns.print(`${c.m}Welcome to gnvr.js`), ns.tprintf(`${c.g}*** Startup Complete ***`), await ns.sleep(1000), ns.run("neofetch.js"));
+			is_first_start && (ns.print(`${c.m} Welcome to gnvr.js!`), ns.tprintf(`${c.g}*** Startup Complete ***`), await ns.sleep(1000), ns.run("neofetch.js"));
 		},
 		runLoop = async (timer = 0, is_first_start = true, cycle_counter = 0) => (
 			ns.moveTail(win.innerWidth - 1300, 0),
@@ -403,19 +408,18 @@ export async function gvnr(ns) {
 		);
 
 	ns.atExit(() => ns.closeTail(), hook0.innerText = "", hook1.innerText = ""), // Clears the overview on exit to prevent stale data
-		ns.tail(),
+	ns.tail(),
 		ns.disableLog('ALL'),
 		ns.tprintf(`${c.m}** ./gvnr.js **`),
-		ns.print(`${c.r} *** LOADING ***`),
 		await runLoop()
 }
 
-export function prettyLogs(ns, timer, cycle_delay, cycle_counter) {
+function prettyLogs(ns, timer, cycle_delay, cycle_counter) {
 	// Tail print
 	const mainlist = sGet(ns),
 		peekyPorty = (script, data = ns.peek(ns.getRunningScript(script)?.pid ?? ns.pid)) => JSON.parse(data == "NULL PORT DATA" ? "[]" : data),
-		percColour = perc => (perc < 33 ? `${c.r}${perc}` : perc < 66 ? `${c.y}${perc}` : perc < 85 ? `${c.c}${perc}` : `${c.g}${perc}`).padStart(11, " "),
-		secColour = sec => (sec < 0 ? `${c.g}${sec}` : sec < 66 ? `${c.y}${sec}` : `${c.r}${sec}`).padStart(8, " "),
+		percColour = perc => (perc < 33 ? c.r : perc < 66 ? c.y : perc < 85 ? c.c : c.g) + perc.padStart(6, " ") + "%" + c.d,
+		secColour = sec => (sec < 0 ? c.g : sec < 66 ? c.y : c.r) + ("" + sec).padStart(3, " ") + c.d,
 		getCash = ns.getServerMoneyAvailable,
 		getMaxMoney = ns.getServerMaxMoney,
 		getSecLvl = ns.getServerSecurityLevel,
@@ -427,136 +431,108 @@ export function prettyLogs(ns, timer, cycle_delay, cycle_counter) {
 		funded_count = mainlist.reduce((a, s) => a + !!getMaxMoney(s), 0),
 		total_max_ram = access_list.reduce((a, s) => a + ns.getServerMaxRam(s), 0),
 		total_free_ram = total_max_ram - access_list.reduce((a, s) => a + ns.getServerUsedRam(s), 0),
-		spacer = " | ",
 		date = Number(new Date()),
 		lastaugtime = Number(ns.read("logs/lastAugTime.txt")) || date,
 		boughtaugs = JSON.parse(ns.read("logs/boughtAugs.txt")),
 		boughtaugsminusnfg = boughtaugs.reduce((acc, aug) => acc + (aug != NFG), 0),
 		nfgcount = boughtaugs.reduce((acc, aug) => acc + (aug == NFG), 0),
 		otheraugs = JSON.parse(ns.read("logs/installedAugs.txt")).reduce((acc, aug) => acc + (aug != NFG), 0),
-		aug_info = boughtaugs.filter(a => a != NFG).map(aug => ` ·${aug}`).concat(nfgcount ? [(` ·NeuroFlux Governor x${nfgcount}\n`)] : null).join("\n");
-	ns.clearLog()
-	funded_list.map(server => ({
-		name: server,
-		maxmoney: ns.formatNumber(getMaxMoney(server)).toString().padStart(8, " "),
-		availmoney: ns.formatNumber(getCash(server)).toString().padStart(8, " "),
-		percmoney: percColour((getCash(server) / getMaxMoney(server) * 100).toFixed(2)) + "%" + c.d,
-		seclvl: Math.ceil(getSecLvl(server)).toString().padStart(3, " "),
-		secdelta: secColour(Math.floor(getSecLvl(server) - (getSecMin(server) + 3))) + c.d,
-		weaktime: t(ns.getWeakenTime(server)),
-	})
-	).forEach(server =>
-		ns.print(`${spacer}${server.seclvl}${spacer}${server.secdelta}${spacer}${server.availmoney}${spacer}${server.maxmoney}${spacer}${server.percmoney}${spacer}${server.weaktime}${spacer}${server.name}${server.name == prsm_info.hostname ? ` ${c.w}---${c.y}Δ< ` : ""}`)
-	);
-	ns.print(...[
-		`${spacer}sec${spacer} Δ ${spacer}  \$cur  ${spacer}  \$max  ${spacer}   %   ${spacer}  ~ete  ${spacer} Target ~ ${funded_list.length}/${funded_count}\n\n`,
-		` home - ${ramFormat(ns.getServerMaxRam("home") - ns.getServerUsedRam("home"))}/${ramFormat(ns.getServerMaxRam("home"))}, network - ${ramFormat(total_free_ram)}/${ramFormat(total_max_ram)}, ${fmtNum(Math.floor(total_free_ram / ns.getScriptRam("weaken.js")))}/${fmtNum(Math.floor(total_max_ram / ns.getScriptRam("weaken.js")))} threads\n`,
-		` bought augs x ${boughtaugsminusnfg}, ${otheraugs}/100 installed\n`,
-		`${aug_info}`,
-		` ${ns.read("logs/installAugsReason.txt")}`,
-	]);
+		aug_info = boughtaugs.filter(a => a != NFG).map(aug => ` ·${aug}`).concat(nfgcount ? [(` ·NeuroFlux Governor x${nfgcount}\n`)] : null).join("\n"),
+		printLogLine = line => ns.print(" "+line.join(" | "));
+
+  // Tail logs
+	ns.clearLog(),
+	funded_list.map(server => [
+		Math.ceil(getSecLvl(server)).toString().padStart(3, " "),
+		secColour(Math.floor(getSecLvl(server) - (getSecMin(server) + 3))),
+		ns.formatNumber(getCash(server)).toString().padStart(8, " "),
+		ns.formatNumber(getMaxMoney(server)).toString().padStart(8, " "),
+		percColour((getCash(server) / getMaxMoney(server) * 100).toFixed(2)),
+		t(ns.getWeakenTime(server)),
+		server == prsm_info.hostname ? `${server} ${c.w}---${c.y}Δ<` : server
+	]
+	).forEach(printLogLine),
+		printLogLine(["sec", " Δ ", "  \$cur  ", "  \$max  ", "   %   ", "  ~ete  ", ` Target ~ ${funded_list.length}/${funded_count}`]),
+		ns.print([
+			"",
+			` home - ${ramFormat(ns.getServerMaxRam("home") - ns.getServerUsedRam("home"))}/${ramFormat(ns.getServerMaxRam("home"))}`,
+			` network - ${ramFormat(total_free_ram)}/${ramFormat(total_max_ram)}`,
+			` threads - ${fmtNum(Math.floor(total_free_ram / ns.getScriptRam("weaken.js")))}/${fmtNum(Math.floor(total_max_ram / ns.getScriptRam("weaken.js")))} threads`,
+			"",
+			` bought augs x ${boughtaugsminusnfg}, ${otheraugs}/100 installed`,
+			`${aug_info}`,
+			` ${ns.read("logs/installAugsReason.txt")}`,
+		].join("\n"));
 
 	// Overview stuff
 	const p = ns.getPlayer(),
-		leftbar = "<>".repeat(8),
-		rightbar = leftbar;
-	hook0.innerText = [
-		`bitnode:`,
-		`pserv:`,
-		`w_d lvl:`,
-		`city:`,
-		`karma:`,
-		leftbar,
-		`target:`,
-		`\$/s:`,
-		`\$ total:`,
-		`xp/s:`,
-		`scripts:`,
-		leftbar,
-		`hN Servers:`,
-		`hashes/Max:`,
-		`hashes/s:`,
-		`profit:`,
-		leftbar,
-		`status:`,
-		`members:`,
-		`power:`,
-		`territory:`,
-		`warfare?:`,
-		`profit:`,
-		`${leftbar}`,
-		`${tickString(timer)}`,
-		`gvnr uptime:`,
-		`t+ Augbuy:`,
-		`t+ Install:`,
-		`t+ Bitnode:`,
-	].join("\n")
-
-	hook1.innerText = [
-		`${getCurrentNode(ns)}`,
-		`${ns.getPurchasedServers().length}/${ns.getPurchasedServerLimit()}`,
-		`${Math.round(3000 * ns.getBitNodeMultipliers().WorldDaemonDifficulty)}`,
-		`${p.city}`,
-		`${fmtNum(ns.heart.break())}`,
-		rightbar,
-		`${prsm_info.hostname}`,
-		`\$${fmtNum(ns.getScriptIncome("loop/prsm.js"))}`,
-		`${fmtNum(ns.getMoneySources().sinceInstall.hacking)}`,
-		`${fmtNum(ns.getTotalScriptExpGain())}`,
-		`${sGet(ns).flatMap(s => ns.ps(s)).length}`,
-		rightbar,
-		`${hacknet_info.num}`,
-		`${hacknet_info.hashes}`,
-		`${fmtNum(hacknet_info.prod)}`,
-		`\$${fmtNum(hacknet_info.profit)}`,
-		rightbar,
-		`${gang_info?.cycle ?? "~"}`,
-		`${gang_info?.memnum ?? "~"}`,
-		`${fmtNum(gang_info?.power ?? 0, 2)}/${fmtNum(gang_info?.nextpower ?? 0, 2)}`,
-		`${fmtNum(gang_info?.territory ?? 0 * 100) ?? "~"}%`,
-		`${gang_info?.tw ?? "~"}`,
-		`\$${fmtNum(ns.getMoneySources().sinceStart.gang ?? 0)}`,
-		`${rightbar}`,
-		`cycle #${Math.floor(cycle_counter / cycle_delay)}`,
-		`${t(timer * 1000)}`,
-		`${!!(date - lastaugtime) ? t(date - lastaugtime) : "N/A"}`,
-		`${t(date - ns.getResetInfo().lastAugReset)}`,
-		`${t(date - ns.getResetInfo().lastNodeReset)}`,
-	].join("\n")
+		bar = "<>".repeat(8),
+		overview_array = [
+			[`bitnode:`, `${getCurrentNode(ns)}`],
+			[`pserv:`, `${ns.getPurchasedServers().length}/${ns.getPurchasedServerLimit()}`],
+			[`w_d lvl:`, `${Math.round(3000 * ns.getBitNodeMultipliers().WorldDaemonDifficulty)}`],
+			[`city:`, `${p.city}`],
+			[`karma:`, `${fmtNum(ns.heart.break())}`],
+			[bar, bar],
+			[`target:`, `${prsm_info.hostname}`],
+			[`\$/s:`, `\$${fmtNum(ns.getScriptIncome("loop/prsm.js"))}`],
+			[`\$ total:`, `${fmtNum(ns.getMoneySources().sinceInstall.hacking)}`],
+			[`xp/s:`, `${fmtNum(ns.getTotalScriptExpGain())}`],
+			[`scripts:`, `${sGet(ns).flatMap(s => ns.ps(s)).length}`],
+			[bar, bar],
+			[`hN Servers:`, `${hacknet_info.num}`],
+			[`hashes/Max:`, `${hacknet_info.hashes}`],
+			[`hashes/s:`, `${fmtNum(hacknet_info.prod)}`],
+			[`profit:`, `\$${fmtNum(hacknet_info.profit)}`],
+			[bar, bar],
+			[`status:`, `${gang_info?.cycle ?? "~"}`],
+			[`members:`, `${gang_info?.memnum ?? "~"}`],
+			[`power:`, `${fmtNum(gang_info?.power ?? 0, 2)}/${fmtNum(gang_info?.nextpower ?? 0, 2)}`],
+			[`territory:`, `${fmtNum(gang_info?.territory ?? 0 * 100) ?? "~"}%`],
+			[`warfare?:`, `${gang_info?.tw ?? "~"}`],
+			[`profit:`, `\$${fmtNum(ns.getMoneySources().sinceStart.gang ?? 0)}`],
+			[bar, bar],
+			[`${tickString(timer)}`, `cycle #${Math.floor(cycle_counter / cycle_delay)}`],
+			[`gvnr uptime:`, `${t(timer * 1000)}`],
+			[`t+ Augbuy:`, `${!!(date - lastaugtime) ? t(date - lastaugtime) : "N/A"}`],
+			[`t+ Install:`, `${t(date - ns.getResetInfo().lastAugReset)}`],
+			[`t+ Bitnode:`, `${t(date - ns.getResetInfo().lastNodeReset)}`]];
+	hook0.innerText = overview_array.map(a=>a[0]).join("\n")
+	hook1.innerText = overview_array.map(a=>a[1]).join("\n")
 
 }
 
 /** @param {NS} ns */
 export async function neofetch(ns) {
-	const dateFormat = date => `${Math.floor(date / (60 * 24))} days, ${Math.floor(date / ((60)) % 24)} hours, ${Math.floor(date % 60)} mins`,
+	const dateFormat = date => `${Math.floor(date / (60 * 24))} days, ${Math.floor(date / 60 % 24)} hours, ${Math.floor(date % 60)} mins`,
 		pad = ` `.repeat(35),
 		title = `muesli@home`,
 		dashes = c.w + "-".repeat(11),
-		os = `OS: ${c.w}Fulcrum Technologies Chapeau Linux x86_64`,
-		host = `Host: ${c.w}${ns.getHostname()}`,
-		kernel = `Kernel: ${c.w}${doc.title}`,
-		uptime = `Uptime: ${c.w}${dateFormat(ns.getPlayer().totalPlaytime / (1000 * 60))}`,
-		packages = `Packages: ${c.w}${ns.ls("home").length} (bitpkg)`,
-		shell = `Shell: ${c.w}bit-sh 6.9`,
-		resolution = `Resolution: ${c.w}${win.innerWidth} x ${win.innerHeight}`,
-		wm = `WM: ${c.w}BitBurner WM`,
-		terminal = `Terminal: ${c.w}BiTTY`,
-		cpu = `CPU: ${c.w}Gen FT-6900x ${ns.getServer("home").cpuCores} core`,
-		memory = `Memory: ${c.w}${ns.getServer("home").ramUsed * 1000} MiB / ${ns.getServer("home").maxRam * 1000} MiB`,
+		os = `${c.g}OS: ${c.w}Fulcrum Technologies Chapeau Linux x86_64`,
+		host = `${c.g}Host: ${c.w}${ns.getHostname()}`,
+		kernel = `${c.g}Kernel: ${c.w}${doc.title}`,
+		uptime = `${c.g}Uptime: ${c.w}${dateFormat(ns.getPlayer().totalPlaytime / (1000 * 60))}`,
+		packages = `${c.g}Packages: ${c.w}${ns.ls("home").length} (bitpkg)`,
+		shell = `${c.g}Shell: ${c.w}bit-sh 6.9`,
+		resolution = `${c.g}Resolution: ${c.w}${win.innerWidth} x ${win.innerHeight}`,
+		wm = `${c.g}WM: ${c.w}BitBurner WM`,
+		terminal = `${c.g}Terminal: ${c.w}BiTTY`,
+		cpu = `${c.g}CPU: ${c.w}Gen FT-6900x ${ns.getServer("home").cpuCores} core`,
+		memory = `${c.g}Memory: ${c.w}${ns.getServer("home").ramUsed * 1000} MiB / ${ns.getServer("home").maxRam * 1000} MiB`,
 		ascii = [`${pad}${c.g}neofetch ~`,
-		`    ${c.g}FFFFFFFF\\${c.r}.......${c.g}TTTTTTTT\\      ${c.g}${title}`,
-		`    ${c.g}FF \\_____|${c.r}:~:~:~${c.g}\\__TT \\__|     ${c.g}${dashes}`,
-		`    ${c.g}FF |${c.r}:=:=:=:=:=:=:=:${c.g}TT |${c.r}=\\      ${c.g}${os}`,
-		`   ${c.r}/${c.g}FFFFF\\${c.r}-*-*-*-*-*-*-${c.g}TT |${c.r}*-\\     ${c.g}${host}`,
-		`  ${c.r}/*${c.g}FF \\__|${c.r}************${c.g}TT |${c.r}***\\    ${c.g}${kernel}`,
-		`  ${c.r}==${c.g}FF |${c.r}====${c.g}CCCCCC\\${c.r}====${c.g}TT |${c.r}====\\   ${c.g}${uptime}`,
-		`  ${c.r}##${c.g}FF |${c.r}###${c.g}CCC __CC\\${c.r}###${c.g}TT |${c.r}####||  ${c.g}${packages}`,
-		`  ${c.r}==${c.g}\\_\\|${c.r}===${c.g}CC /${c.r}==${c.g}\\__|${c.r}==${c.g}\\_\\|${c.r}====||  ${c.g}${shell}`,
-		`  ${c.r}\\********${c.g}CC |${c.r}***************/\\|  ${c.g}${resolution}`,
-		`   ${c.r}\\*-*-*-*${c.g}CC |${c.r}-*-*-*-*-*-*-*/ /   ${c.g}${wm}`,
-		`    ${c.r}\\:=:=:=${c.g}CC |${c.r}:=${c.g}CC\\${c.r}=:=:=:=:/ /    ${c.g}${terminal}`,
-		`     ${c.r}\\~:~:~${c.g}\\CCCCCC  |${c.r}~:~:~:/ /     ${c.g}${cpu}`,
-		`      ${c.r}\\_____${c.g}\\_____\\/${c.r}______/ /      ${c.g}${memory}`,
+		`    ${c.g}FFFFFFFF\\${c.r}.......${c.g}TTTTTTTT\\      ${title}`,
+		`    ${c.g}FF \\_____|${c.r}:~:~:~${c.g}\\__TT \\__|     ${dashes}`,
+		`    ${c.g}FF |${c.r}:=:=:=:=:=:=:=:${c.g}TT |${c.r}=\\      ${os}`,
+		`   ${c.r}/${c.g}FFFFF\\${c.r}-*-*-*-*-*-*-${c.g}TT |${c.r}*-\\     ${host}`,
+		`  ${c.r}/*${c.g}FF \\__|${c.r}************${c.g}TT |${c.r}***\\    ${kernel}`,
+		`  ${c.r}==${c.g}FF |${c.r}====${c.g}CCCCCC\\${c.r}====${c.g}TT |${c.r}====\\   ${uptime}`,
+		`  ${c.r}##${c.g}FF |${c.r}###${c.g}CCC __CC\\${c.r}###${c.g}TT |${c.r}####||  ${packages}`,
+		`  ${c.r}==${c.g}\\_\\|${c.r}===${c.g}CC /${c.r}==${c.g}\\__|${c.r}==${c.g}\\_\\|${c.r}====||  ${shell}`,
+		`  ${c.r}\\********${c.g}CC |${c.r}***************/\\|  ${resolution}`,
+		`   ${c.r}\\*-*-*-*${c.g}CC |${c.r}-*-*-*-*-*-*-*/ /   ${wm}`,
+		`    ${c.r}\\:=:=:=${c.g}CC |${c.r}:=${c.g}CC\\${c.r}=:=:=:=:/ /    ${terminal}`,
+		`     ${c.r}\\~:~:~${c.g}\\CCCCCC  |${c.r}~:~:~:/ /     ${cpu}`,
+		`      ${c.r}\\_____${c.g}\\_____\\/${c.r}______/ /      ${memory}`,
 		`       ${c.r}\\__________________\\/`,
 		`${pad}${c.k}████${c.r}████${c.g}████${c.y}████${c.b}████${c.m}████${c.c}████${c.d}████`,
 		`${pad}${c.k}████${c.r}████${c.g}████${c.y}████${c.b}████${c.m}████${c.c}████${c.w}████`,
