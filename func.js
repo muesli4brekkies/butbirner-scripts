@@ -1,8 +1,32 @@
 // FUNCtions
+const LOOP_FUNCTIONS = ["stan", "runGang", "prsm"];
+const ONESHOT_FUNCTIONS = [
+	"availableAugs",
+	"pServers",
+	"factWork",
+	"murderate",
+	"d43m0nD357r0y",
+	"ramUp",
+	"coresUp",
+	"darkwebShopping",
+	"buyTOR",
+	"factionJoin",
+	"graft",
+	"donate",
+	"installAugs",
+	"buyAugs",
+	"cityAugs",
+	"ownedAugs",
+	"hacknetShindigs",
+	"persuade",
+	"steves",
+	"bladeBurner",
+];
+export const win = eval("window");
+export const doc = eval("document");
+const hook0 = doc.getElementById('overview-extra-hook-0');
+const hook1 = doc.getElementById('overview-extra-hook-1');
 const NFG = "NeuroFlux Governor"
-export const win = "window";
-export const doc = "document";
-export const test = "ns.getServer";
 export const c = {
 	r: "\x1b[31m", //red
 	g: "\x1b[32m",//green
@@ -34,40 +58,17 @@ export function persuade(n, a = (s, p) => n.scan(s).forEach(v => v != p ? a(v, s
 export function d43m0nD357r0y(ns, s = ns.singularity, date = new Date(), wd = "w0r1d_d43m0n") { sGet(ns).includes(wd) && ns.getHackingLevel() > ns.getServerRequiredHackingLevel(wd) && (["installCounter.txt", "installAugsReason.txt", "installAugsLog.txt"].map(f => ns.rm(`logs/${f}`)), ns.write("logs/nodeLog.txt", `${getCurrentNode(ns)} completed  - ${date.toLocaleTimeString()} ${date.toLocaleDateString()}\n`), s.destroyW0r1dD43m0n(12, "rset.js")) }
 export function pServers(ns) { (ns.purchaseServer(ns.getPurchasedServers().length, 8) && ns.tprintf(`${c.c}Purchased host server ${ns.getPurchasedServers().length - 1}`)) || ns.getPurchasedServers().some(server => ns.upgradePurchasedServer(server, ns.getServerMaxRam(server) * 2)) && pServers(ns) };
 
-const LOOP_SCRIPTS = ["stan", "runGang", "prsm"];
-const ONESHOT_SCRIPTS = [
-	"availableAugs",
-	"pServers",
-	"murderate",
-	"d43m0nD357r0y",
-	"ramUp",
-	"coresUp",
-	"darkwebShopping",
-	"buyTOR",
-	"factionJoin",
-	"factWork",
-	"graft",
-	"donate",
-	"installAugs",
-	"buyAugs",
-	"cityAugs",
-	"ownedAugs",
-	"hacknetShindigs",
-	"persuade",
-	"steves",
-	"bladeBurner",
-];
 /** @param {NS} ns */
 export function writeLaunchers(ns) {
 	const writeFile = (type, func, is_async) => ns.write(`${type}/${func}.js`, `import { ${func} } from "func.js"; export const main = ${is_async ? "async" : ""} ns =>(${is_async ? "await" : ""} ${func}(ns,ns.args[0]), ns.atExit(() => (ns.clearPort(ns.pid),ns.writePort(ns.pid, ""))));`, "w");
 	ns.ls("home", "oneshot/").forEach(s => ns.rm(s)),
 		ns.ls("home", "loop/").forEach(s => ns.rm(s)),
 		// looping functions here
-		["gvnr"].forEach(func => writeFile("", func, true)),
-		LOOP_SCRIPTS.forEach(func => writeFile("loop", func, true)),
-		// regular functions here
+		["neofetch", "gvnr"].forEach(func => writeFile("", func, true)),
+		LOOP_FUNCTIONS.forEach(func => writeFile("loop", func, true)),
 
-		ONESHOT_SCRIPTS.forEach(func => writeFile("oneshot", func, false)),
+		// regular functions here
+		ONESHOT_FUNCTIONS.forEach(func => writeFile("oneshot", func, false)),
 		["backdoor"].forEach(func => writeFile("oneshot", func, true))
 }
 
@@ -107,6 +108,7 @@ export function donate(ns, s = ns.singularity) {
 		ns.tprintf(`${c.m}Donated \$100B to ${aug.faction}`) // print
 	)
 }
+
 /** @param {NS} ns */
 export function installAugs(ns, s = ns.singularity) {
 	const date = new Date(),
@@ -237,7 +239,7 @@ export function steves(ns, s = ns.sleeve, b = ns.bladeburner, g = ns.gang) {
 		skillToTrain = (steve) => ["strength", "defense", "dexterity", "agility"].map(skill => ({ name: skill, val: s.getSleeve(steve).skills[skill] })).filter(x => x.val < 25)[0]?.name;
 
 	steves.forEach(steve => s.setToShockRecovery(steve)),
-		steves.filter(steve => ((s.getTask(steve)?.cyclesWorked ?? 0) / (s.getTask(steve)?.cyclesNeeded ?? 1) < 0.5)).forEach(steve => {
+		steves.forEach(steve => {
 			(!s.getSleeve(steve).shock && s.getSleevePurchasableAugs(steve).sort((a, b) => a.cost - b.cost).forEach(aug => s.purchaseSleeveAug(steve, aug.name))),
 				s.getSleeve(steve).shock < 90 &&
 				(skillToTrain(steve) ? (s.travel(steve, "Sector-12"), s.setToGymWorkout(steve, "Powerhouse Gym", skillToTrain(steve))) :
@@ -349,10 +351,9 @@ export async function prsm(ns) {
 					{ name: "grow", jobs: grow_jobs, time: job_delay * 2 + (hack_time * 0.8) },
 					{ name: "hack", jobs: hack_jobs, time: 0 + (hack_time * 3) },
 				],
-				deployScripts = () => ["hack", "grow", "weaken"].forEach((script, _) => (ns.write(`${script}.js`, `export const main = async ns => await ns.${script}(ns.args[0], { additionalMsec: ns.args[1] })`, "w"), sGet(ns).forEach(server => ns.scp(`${script}.js`, server)))),
 				jobs_array = (target.moneyAvailable / target.moneyMax < 0.9 || target.hackDifficulty > target.minDifficulty + 3) ? whole_jobs_array.slice(1, 3) : whole_jobs_array, // gw to prep
 				//ns.tprint(jobs_array)
-				mod_run_dummy_player = (deployScripts(), jobs_array.flatMap(script =>
+				mod_run_dummy_player = jobs_array.flatMap(script =>
 					host_list.map(host =>
 						sendJobs(// Iterate through hosts and fill each one with jobs until done
 							{
@@ -365,23 +366,54 @@ export async function prsm(ns) {
 							dummy_player,
 						)
 					)
-				).pop());
+				).pop();
 			ns.clearPort(ns.pid);
 			ns.writePort(ns.pid, JSON.stringify(target));
 			await ns.sleep(batch_delay);
 			await runLoop(mod_run_dummy_player)
 		};
-	await runLoop(dummy_player);
+	["hack", "grow", "weaken"].forEach((script, _) => (ns.write(`${script}.js`, `export const main = async ns => await ns.${script}(ns.args[0], { additionalMsec: ns.args[1] })`, "w"), sGet(ns).forEach(server => ns.scp(`${script}.js`, server)))),
+		await runLoop(dummy_player);
 
 }
 
 /** @param {NS} ns */
 export async function gvnr(ns) {
-	ns.tail();
-	ns.disableLog('ALL');
-	ns.tprintf(`${c.m}** ./gvnr.js **`);
-	ns.print(`${c.r} *** LOADING ***`);
-	const peekyPorty = (script, data = ns.peek(ns.getRunningScript(script)?.pid ?? ns.pid)) => JSON.parse(data == "NULL PORT DATA" ? "[]" : data),
+	const refresh_delay = 1,
+		cycle_delay = 30,
+		runScripts = async (is_first_start) => {
+			for (const script of [
+				"solveallcontracts.js",
+				...ONESHOT_FUNCTIONS.map(s => `oneshot/${s}.js`),
+			]) {
+				is_first_start && ns.tprintf(`${c.y}starting ${script}`);
+				const runpid = ns.run(script)
+				runpid ? (await ns.getPortHandle(runpid).nextWrite(), (is_first_start && ns.tprintf(`${c.g}${script} passed init`))) : ns.tprintf(`${c.r}!! ${script} DID NOT RUN !!`);
+			};
+			LOOP_FUNCTIONS.map(s => `loop/${s}.js`).forEach(script => !ns.isRunning(script) && (ns.run(script), ns.tprintf(`${c.y}starting ${script}`)));
+			is_first_start && (ns.print(`${c.m}Welcome to gnvr.js`), ns.tprintf(`${c.g}*** Startup Complete ***`), await ns.sleep(1000), ns.run("neofetch.js"));
+		},
+		runLoop = async (timer = 0, is_first_start = true, cycle_counter = 0) => (
+			ns.moveTail(win.innerWidth - 1300, 0),
+			ns.resizeTail(850, 1000),
+			prettyLogs(ns, timer, cycle_delay, cycle_counter),
+			timer % cycle_delay == 0 && await runScripts(is_first_start),
+			await ns.sleep(refresh_delay * 1000),
+			await runLoop(timer + refresh_delay, false, cycle_counter++)
+		);
+
+	ns.atExit(() => ns.closeTail(), hook0.innerText = "", hook1.innerText = ""), // Clears the overview on exit to prevent stale data
+		ns.tail(),
+		ns.disableLog('ALL'),
+		ns.tprintf(`${c.m}** ./gvnr.js **`),
+		ns.print(`${c.r} *** LOADING ***`),
+		await runLoop()
+}
+
+export function prettyLogs(ns, timer, cycle_delay, cycle_counter) {
+	// Tail print
+	const mainlist = sGet(ns),
+		peekyPorty = (script, data = ns.peek(ns.getRunningScript(script)?.pid ?? ns.pid)) => JSON.parse(data == "NULL PORT DATA" ? "[]" : data),
 		percColour = perc => (perc < 33 ? `${c.r}${perc}` : perc < 66 ? `${c.y}${perc}` : perc < 85 ? `${c.c}${perc}` : `${c.g}${perc}`).padStart(11, " "),
 		secColour = sec => (sec < 0 ? `${c.g}${sec}` : sec < 66 ? `${c.y}${sec}` : `${c.r}${sec}`).padStart(8, " "),
 		getCash = ns.getServerMoneyAvailable,
@@ -389,142 +421,148 @@ export async function gvnr(ns) {
 		getSecLvl = ns.getServerSecurityLevel,
 		getSecMin = ns.getServerMinSecurityLevel,
 		fmtNum = ns.formatNumber,
-		refresh_delay = 1,
-		cycle_delay = 30,
-	 runLoop = async (timer = 0, is_first_start = true, cycle_counter = 0) => {
-		ns.moveTail(eval("window").innerWidth - 1300, 0)
-		ns.resizeTail(850, 1000);
-		// Run things every n sec
-		if (timer % cycle_delay == 0 && !ns.args[0]) {
-			for (const script of [
-				...ONESHOT_SCRIPTS.map(s => `oneshot/${s}.js`),
-				"solveallcontracts.js",
-			]) {
-				if (is_first_start) { ns.tprintf(`${c.y}starting ${script}`) }
-				const runpid = ns.run(script)
-				if (runpid) {
-					await ns.getPortHandle(runpid).nextWrite();
-					if (is_first_start) { ns.tprintf(`${c.g}${script} passed init`) };
-				} else { ns.tprintf(`${c.r}!! ${script} DID NOT RUN !!`) };
-			}
-		}
-		LOOP_SCRIPTS.map(s => `loop/${s}.js`).forEach(script => !ns.isRunning(script) && (ns.run(script), ns.tprintf(`${c.y}starting ${script}`)));
-		const prsm_info = peekyPorty("loop/prsm.js"), gang_info = peekyPorty("loop/runGang.js"), hacknet_info = JSON.parse(ns.read("logs/hacknet_info.txt"));
-		if (is_first_start) { ns.print(`${c.m}Welcome to gnvr.js`), ns.tprintf(`${c.g}*** Startup Complete ***`), await ns.sleep(1000), ns.run("neofetch.js") };
+		prsm_info = peekyPorty("loop/prsm.js"), gang_info = peekyPorty("loop/runGang.js"), hacknet_info = JSON.parse(ns.read("logs/hacknet_info.txt")),
+		access_list = mainlist.filter(s => ns.hasRootAccess(s) && ns.getServerRequiredHackingLevel(s) <= ns.getHackingLevel()),
+		funded_list = access_list.filter(getMaxMoney),
+		funded_count = mainlist.reduce((a, s) => a + !!getMaxMoney(s), 0),
+		total_max_ram = access_list.reduce((a, s) => a + ns.getServerMaxRam(s), 0),
+		total_free_ram = total_max_ram - access_list.reduce((a, s) => a + ns.getServerUsedRam(s), 0),
+		spacer = " | ",
+		date = Number(new Date()),
+		lastaugtime = Number(ns.read("logs/lastAugTime.txt")) || date,
+		boughtaugs = JSON.parse(ns.read("logs/boughtAugs.txt")),
+		boughtaugsminusnfg = boughtaugs.reduce((acc, aug) => acc + (aug != NFG), 0),
+		nfgcount = boughtaugs.reduce((acc, aug) => acc + (aug == NFG), 0),
+		otheraugs = JSON.parse(ns.read("logs/installedAugs.txt")).reduce((acc, aug) => acc + (aug != NFG), 0),
+		aug_info = boughtaugs.filter(a => a != NFG).map(aug => ` ·${aug}`).concat(nfgcount ? [(` ·NeuroFlux Governor x${nfgcount}\n`)] : null).join("\n");
+	ns.clearLog()
+	funded_list.map(server => ({
+		name: server,
+		maxmoney: ns.formatNumber(getMaxMoney(server)).toString().padStart(8, " "),
+		availmoney: ns.formatNumber(getCash(server)).toString().padStart(8, " "),
+		percmoney: percColour((getCash(server) / getMaxMoney(server) * 100).toFixed(2)) + "%" + c.d,
+		seclvl: Math.ceil(getSecLvl(server)).toString().padStart(3, " "),
+		secdelta: secColour(Math.floor(getSecLvl(server) - (getSecMin(server) + 3))) + c.d,
+		weaktime: t(ns.getWeakenTime(server)),
+	})
+	).forEach(server =>
+		ns.print(`${spacer}${server.seclvl}${spacer}${server.secdelta}${spacer}${server.availmoney}${spacer}${server.maxmoney}${spacer}${server.percmoney}${spacer}${server.weaktime}${spacer}${server.name}${server.name == prsm_info.hostname ? ` ${c.w}---${c.y}Δ< ` : ""}`)
+	);
+	ns.print(...[
+		`${spacer}sec${spacer} Δ ${spacer}  \$cur  ${spacer}  \$max  ${spacer}   %   ${spacer}  ~ete  ${spacer} Target ~ ${funded_list.length}/${funded_count}\n\n`,
+		` home - ${ramFormat(ns.getServerMaxRam("home") - ns.getServerUsedRam("home"))}/${ramFormat(ns.getServerMaxRam("home"))}, network - ${ramFormat(total_free_ram)}/${ramFormat(total_max_ram)}, ${fmtNum(Math.floor(total_free_ram / ns.getScriptRam("weaken.js")))}/${fmtNum(Math.floor(total_max_ram / ns.getScriptRam("weaken.js")))} threads\n`,
+		` bought augs x ${boughtaugsminusnfg}, ${otheraugs}/100 installed\n`,
+		`${aug_info}`,
+		` ${ns.read("logs/installAugsReason.txt")}`,
+	]);
 
-		// Tail print
-		const mainlist = sGet(ns),
-			access_list = mainlist.filter(s => ns.hasRootAccess(s) && ns.getServerRequiredHackingLevel(s) <= ns.getHackingLevel()),
-			funded_list = access_list.filter(s => getMaxMoney(s)),
-			funded_count = mainlist.reduce((a, s) => a + !!getMaxMoney(s), 0),
-			total_max_ram = access_list.reduce((a, s) => a + ns.getServerMaxRam(s), 0),
-			total_free_ram = total_max_ram - access_list.reduce((a, s) => a + ns.getServerUsedRam(s), 0),
-			spacer = " | ",
-			date = Number(new Date()),
-			lastaugtime = Number(ns.read("logs/lastAugTime.txt")) || date,
-			boughtaugs = JSON.parse(ns.read("logs/boughtAugs.txt")),
-			boughtaugsminusnfg = boughtaugs.reduce((acc, aug) => acc + (aug != NFG), 0),
-			nfgcount = boughtaugs.reduce((acc, aug) => acc + (aug == NFG), 0),
-			otheraugs = JSON.parse(ns.read("logs/installedAugs.txt")).reduce((acc, aug) => acc + (aug != NFG), 0),
-			aug_info = boughtaugs.filter(a => a != NFG).map(aug => ` ·${aug}`).concat(nfgcount ? [(` ·NeuroFlux Governor x${nfgcount}\n`)] : null).join("\n");
-		ns.clearLog()
-		funded_list.map(server => ({
-			name: server,
-			maxmoney: ns.formatNumber(getMaxMoney(server)).toString().padStart(8, " "),
-			availmoney: ns.formatNumber(getCash(server)).toString().padStart(8, " "),
-			percmoney: percColour((getCash(server) / getMaxMoney(server) * 100).toFixed(2)) + "%" + c.d,
-			seclvl: Math.ceil(getSecLvl(server)).toString().padStart(3, " "),
-			secdelta: secColour(Math.floor(getSecLvl(server) - (getSecMin(server) + 3))) + c.d,
-			weaktime: t(ns.getWeakenTime(server)),
-		})
-		).forEach(server =>
-			ns.print(`${spacer}${server.seclvl}${spacer}${server.secdelta}${spacer}${server.availmoney}${spacer}${server.maxmoney}${spacer}${server.percmoney}${spacer}${server.weaktime}${spacer}${server.name}${server.name == prsm_info.hostname ? ` ${c.w}---${c.y}Δ< ` : ""}`)
-		);
-		ns.print(...[
-			`${spacer}sec${spacer} Δ ${spacer}  \$cur  ${spacer}  \$max  ${spacer}   %   ${spacer}  ~ete  ${spacer} Target ~ ${funded_list.length}/${funded_count}\n\n`,
-			` home - ${ramFormat(ns.getServerMaxRam("home") - ns.getServerUsedRam("home"))}/${ramFormat(ns.getServerMaxRam("home"))}, network - ${ramFormat(total_free_ram)}/${ramFormat(total_max_ram)}, ${fmtNum(Math.floor(total_free_ram / ns.getScriptRam("weaken.js")))}/${fmtNum(Math.floor(total_max_ram / ns.getScriptRam("weaken.js")))} threads\n`,
-			` bought augs x ${boughtaugsminusnfg}, ${otheraugs}/100 installed\n`,
-			`${aug_info}`,
-			` ${ns.read("logs/installAugsReason.txt")}`,
-		]);
+	// Overview stuff
+	const p = ns.getPlayer(),
+		leftbar = "<>".repeat(8),
+		rightbar = leftbar;
+	hook0.innerText = [
+		`bitnode:`,
+		`pserv:`,
+		`w_d lvl:`,
+		`city:`,
+		`karma:`,
+		leftbar,
+		`target:`,
+		`\$/s:`,
+		`\$ total:`,
+		`xp/s:`,
+		`scripts:`,
+		leftbar,
+		`hN Servers:`,
+		`hashes/Max:`,
+		`hashes/s:`,
+		`profit:`,
+		leftbar,
+		`status:`,
+		`members:`,
+		`power:`,
+		`territory:`,
+		`warfare?:`,
+		`profit:`,
+		`${leftbar}`,
+		`${tickString(timer)}`,
+		`gvnr uptime:`,
+		`t+ Augbuy:`,
+		`t+ Install:`,
+		`t+ Bitnode:`,
+	].join("\n")
 
-		// Overview stuff
-		const p = ns.getPlayer(),
-			doc = eval("document"),
-			hook0 = doc.getElementById('overview-extra-hook-0'),
-			hook1 = doc.getElementById('overview-extra-hook-1'),
-			leftbar = "<>".repeat(9),
-			rightbar = leftbar;
-		hook0.innerText = [
-			`bitnode:`,
-			`pserv:`,
-			`w_d lvl:`,
-			`city:`,
-			`karma:`,
-			leftbar,
-			`target:`,
-			`\$/s:`,
-			`\$ total:`,
-			`xp/s:`,
-			`scripts:`,
-			leftbar,
-			`hN Servers:`,
-			`hashes/Max:`,
-			`hashes/s:`,
-			`profit:`,
-			leftbar,
-			`status:`,
-			`members:`,
-			`power:`,
-			`territory:`,
-			`warfare?:`,
-			`profit:`,
-			`${leftbar}`,
-			`${tickString(timer)}`,
-			`gvnr uptime:`,
-			`t+ Augbuy:`,
-			`t+ Install:`,
-			`t+ Bitnode:`,
-		].join("\n")
+	hook1.innerText = [
+		`${getCurrentNode(ns)}`,
+		`${ns.getPurchasedServers().length}/${ns.getPurchasedServerLimit()}`,
+		`${Math.round(3000 * ns.getBitNodeMultipliers().WorldDaemonDifficulty)}`,
+		`${p.city}`,
+		`${fmtNum(ns.heart.break())}`,
+		rightbar,
+		`${prsm_info.hostname}`,
+		`\$${fmtNum(ns.getScriptIncome("loop/prsm.js"))}`,
+		`${fmtNum(ns.getMoneySources().sinceInstall.hacking)}`,
+		`${fmtNum(ns.getTotalScriptExpGain())}`,
+		`${sGet(ns).flatMap(s => ns.ps(s)).length}`,
+		rightbar,
+		`${hacknet_info.num}`,
+		`${hacknet_info.hashes}`,
+		`${fmtNum(hacknet_info.prod)}`,
+		`\$${fmtNum(hacknet_info.profit)}`,
+		rightbar,
+		`${gang_info?.cycle ?? "~"}`,
+		`${gang_info?.memnum ?? "~"}`,
+		`${fmtNum(gang_info?.power ?? 0, 2)}/${fmtNum(gang_info?.nextpower ?? 0, 2)}`,
+		`${fmtNum(gang_info?.territory ?? 0 * 100) ?? "~"}%`,
+		`${gang_info?.tw ?? "~"}`,
+		`\$${fmtNum(ns.getMoneySources().sinceStart.gang ?? 0)}`,
+		`${rightbar}`,
+		`cycle #${Math.floor(cycle_counter / cycle_delay)}`,
+		`${t(timer * 1000)}`,
+		`${!!(date - lastaugtime) ? t(date - lastaugtime) : "N/A"}`,
+		`${t(date - ns.getResetInfo().lastAugReset)}`,
+		`${t(date - ns.getResetInfo().lastNodeReset)}`,
+	].join("\n")
 
-		hook1.innerText = [
-			`${getCurrentNode(ns)}`,
-			`${ns.getPurchasedServers().length}/${ns.getPurchasedServerLimit()}`,
-			`${Math.round(3000 * ns.getBitNodeMultipliers().WorldDaemonDifficulty)}`,
-			`${p.city}`,
-			`${fmtNum(ns.heart.break())}`,
-			rightbar,
-			`${prsm_info.hostname}`,
-			`\$${fmtNum(ns.getScriptIncome("loop/prsm.js"))}`,
-			`${fmtNum(ns.getMoneySources().sinceInstall.hacking)}`,
-			`${fmtNum(ns.getTotalScriptExpGain())}`,
-			`${sGet(ns).flatMap(s => ns.ps(s)).length}`,
-			rightbar,
-			`${hacknet_info.num}`,
-			`${hacknet_info.hashes}`,
-			`${fmtNum(hacknet_info.prod)}`,
-			`\$${fmtNum(hacknet_info.profit)}`,
-			rightbar,
-			`${gang_info?.cycle ?? "~"}`,
-			`${gang_info?.memnum ?? "~"}`,
-			`${fmtNum(gang_info?.power ?? 0, 2)}/${fmtNum(gang_info?.nextpower ?? 0, 2)}`,
-			`${fmtNum(gang_info?.territory ?? 0 * 100) ?? "~"}%`,
-			`${gang_info?.tw ?? "~"}`,
-			`\$${fmtNum(ns.getMoneySources().sinceStart.gang ?? 0)}`,
-			`${rightbar}`,
-			`cycle #${Math.floor(cycle_counter++ / cycle_delay)}`,
-			`${t(timer * 1000)}`,
-			`${!!(date - lastaugtime) ? t(date - lastaugtime) : "N/A"}`,
-			`${t(date - ns.getResetInfo().lastAugReset)}`,
-			`${t(date - ns.getResetInfo().lastNodeReset)}`,
-		].join("\n")
+}
 
-
-		ns.atExit(() => { hook0.innerText = ""; hook1.innerText = "" }) // Clears the overview on exit to prevent stale data
-		is_first_start = false
-		timer += refresh_delay;
-		await ns.sleep(refresh_delay * 1000)
-	await runLoop(timer,false,cycle_counter)
-	};
-	await runLoop()
+/** @param {NS} ns */
+export async function neofetch(ns) {
+	const dateFormat = date => `${Math.floor(date / (60 * 24))} days, ${Math.floor(date / ((60)) % 24)} hours, ${Math.floor(date % 60)} mins`,
+		pad = ` `.repeat(35),
+		title = `muesli@home`,
+		dashes = c.w + "-".repeat(11),
+		os = `OS: ${c.w}Fulcrum Technologies Chapeau Linux x86_64`,
+		host = `Host: ${c.w}${ns.getHostname()}`,
+		kernel = `Kernel: ${c.w}${doc.title}`,
+		uptime = `Uptime: ${c.w}${dateFormat(ns.getPlayer().totalPlaytime / (1000 * 60))}`,
+		packages = `Packages: ${c.w}${ns.ls("home").length} (bitpkg)`,
+		shell = `Shell: ${c.w}bit-sh 6.9`,
+		resolution = `Resolution: ${c.w}${win.innerWidth} x ${win.innerHeight}`,
+		wm = `WM: ${c.w}BitBurner WM`,
+		terminal = `Terminal: ${c.w}BiTTY`,
+		cpu = `CPU: ${c.w}Gen FT-6900x ${ns.getServer("home").cpuCores} core`,
+		memory = `Memory: ${c.w}${ns.getServer("home").ramUsed * 1000} MiB / ${ns.getServer("home").maxRam * 1000} MiB`,
+		ascii = [`${pad}${c.g}neofetch ~`,
+		`    ${c.g}FFFFFFFF\\${c.r}.......${c.g}TTTTTTTT\\      ${c.g}${title}`,
+		`    ${c.g}FF \\_____|${c.r}:~:~:~${c.g}\\__TT \\__|     ${c.g}${dashes}`,
+		`    ${c.g}FF |${c.r}:=:=:=:=:=:=:=:${c.g}TT |${c.r}=\\      ${c.g}${os}`,
+		`   ${c.r}/${c.g}FFFFF\\${c.r}-*-*-*-*-*-*-${c.g}TT |${c.r}*-\\     ${c.g}${host}`,
+		`  ${c.r}/*${c.g}FF \\__|${c.r}************${c.g}TT |${c.r}***\\    ${c.g}${kernel}`,
+		`  ${c.r}==${c.g}FF |${c.r}====${c.g}CCCCCC\\${c.r}====${c.g}TT |${c.r}====\\   ${c.g}${uptime}`,
+		`  ${c.r}##${c.g}FF |${c.r}###${c.g}CCC __CC\\${c.r}###${c.g}TT |${c.r}####||  ${c.g}${packages}`,
+		`  ${c.r}==${c.g}\\_\\|${c.r}===${c.g}CC /${c.r}==${c.g}\\__|${c.r}==${c.g}\\_\\|${c.r}====||  ${c.g}${shell}`,
+		`  ${c.r}\\********${c.g}CC |${c.r}***************/\\|  ${c.g}${resolution}`,
+		`   ${c.r}\\*-*-*-*${c.g}CC |${c.r}-*-*-*-*-*-*-*/ /   ${c.g}${wm}`,
+		`    ${c.r}\\:=:=:=${c.g}CC |${c.r}:=${c.g}CC\\${c.r}=:=:=:=:/ /    ${c.g}${terminal}`,
+		`     ${c.r}\\~:~:~${c.g}\\CCCCCC  |${c.r}~:~:~:/ /     ${c.g}${cpu}`,
+		`      ${c.r}\\_____${c.g}\\_____\\/${c.r}______/ /      ${c.g}${memory}`,
+		`       ${c.r}\\__________________\\/`,
+		`${pad}${c.k}████${c.r}████${c.g}████${c.y}████${c.b}████${c.m}████${c.c}████${c.d}████`,
+		`${pad}${c.k}████${c.r}████${c.g}████${c.y}████${c.b}████${c.m}████${c.c}████${c.w}████`,
+		];
+	for (const line of ascii) {
+		ns.tprintf(line);
+		await ns.sleep(Math.random() * 20);
+	}
 }
