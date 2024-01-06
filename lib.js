@@ -1,4 +1,4 @@
-// func.js
+// lib.js
 export const CNST = {
 	NFG: "NeuroFlux Governor",
 	TRP: "The Red Pill",
@@ -89,11 +89,12 @@ export async function Run(ns, path, params, props) {
 };
 
 export const util = {
+
 	/** 
 	* @param {NS} ns The ns object
 	* @param {string} text Text to colour
-	* @param {string} extra_style extra CSS style, eg "font-size:100px; font-weight:bold;"
-	* @param {Number} timeout number of 10th seconds to run the rainbow effect for
+	* @param {string} extra_style Extra CSS style, eg "font-size:100px; font-weight:bold;"
+	* @param {Number} timeout Number of ms to run the rainbow effect for
 	* @return {Promise<Any>} Whatever the passed function returns
 	*/
 	lmaocat: async function (element_id, extra_style, timeout = 10000) {
@@ -185,11 +186,11 @@ export async function buyTOR(ns) {
 }
 
 export async function ramUp(ns) {
-	await Run(ns, "singularity.upgradeHomeRam") && (ns.tprintf(util.ansi.g + "Upgraded home ram"), ramUp(ns))
+	(await Run(ns, "singularity.upgradeHomeRam") && (ns.tprintf(util.ansi.g + "Upgraded home ram")) || ramUp(ns))
 }
 
 export async function coresUp(ns) {
-	await Run(ns, "singularity.upgradeHomeCores") && (ns.tprintf(util.ansi.g + "Upgraded home cores"), coresUp(ns))
+	(await Run(ns, "singularity.upgradeHomeCores") && (ns.tprintf(util.ansi.g + "Upgraded home cores")) || coresUp(ns))
 }
 
 export function factionJoin(n, s = n.singularity) {
@@ -197,15 +198,15 @@ export function factionJoin(n, s = n.singularity) {
 }
 
 export function darkwebShopping(n) {
-	["BruteSSH", "FTPCrack", "relaySMTP", "HTTPWorm", "SQLInject"].map(p => p + ".exe").map(n.singularity.purchaseProgram)
+	["BruteSSH", "FTPCrack", "relaySMTP", "HTTPWorm", "SQLInject"].map(p=>n.singularity.purchaseProgram(`${p}.exe`))
 }
 
 export async function murderate(ns, s = ns.singularity) {
 	!await is_Busy(ns) && (await Run(ns, "getPlayer", [], ".numPeopleKilled") < 30) && (await Run(ns, "singularity.stopAction"), await Run(ns, "singularity.commitCrime", ["Homicide", 0]));
 }
 
-export async function bd(n, server, s = n.singularity) {
-	await (async (r, h, w = t => t == h ? r : (r.unshift(t), w(n.scan(t)[0]))) => (s.connect(h), w(server).map(s.connect), n.tprint(`${util.ansi.y}Backdoor started on ${server}`), await s.installBackdoor(), s.connect(h), n.tprint(`${util.ansi.g}Backdoor complete on ${server}`)))([], "home")
+export async function bd(n, target, s = n.singularity) {
+	await (async (h, w = (t, r = []) => t == h ? r : w(n.scan(t)[0], [t, ...r])) => (s.connect(h), w(target).map(s.connect), n.tprintf(`${util.ansi.y}Backdoor started on ${target}`), await s.installBackdoor(), s.connect(h), n.tprintf(`${util.ansi.g}Backdoor complete on ${target}`)))("home")
 }
 
 export function persuade(n, a = (s, p) => n.scan(s).forEach(v => v != p ? a(v, s) : [n.brutessh, n.ftpcrack, n.relaysmtp, n.sqlinject, n.httpworm, n.nuke].forEach(p => { try { p(s) } catch { } }))) { a("home") };
@@ -255,7 +256,6 @@ function prettyLogs(ns) {
 				? util.ansi.y
 				: util.ansi.r)}${("" + sec).padStart(3, " ")}${util.ansi.d}`
 	);
-	const prsm_target = peekyPorty(ns, "loop/prsm.js");
 	const main_list = sGet(ns);
 	const access_list = main_list.filter(s => ns.hasRootAccess(s) && ns.getServerRequiredHackingLevel(s) <= ns.getHackingLevel());
 	const funded_list = access_list.filter(getMaxMoney);
@@ -269,8 +269,8 @@ function prettyLogs(ns) {
 	const aug_info = bought_augs.filter(a => a != CNST.NFG).map(aug => ` ·${aug}`).concat(num_nfg ? [(` ·NeuroFlux Governor x${num_nfg}\n`)] : null).join("\n");
 	(
 		ns.resizeTail(800, 1000),
-		ns.clearLog(),
 		ns.moveTail(CNST.WIN.innerWidth - 1150, 0),
+		ns.clearLog(),
 		[...funded_list.map(server => [
 			Math.ceil(getSecLvl(server)).toString().padStart(3, " "),
 			secColour(Math.floor(getSecLvl(server) - (getSecMin(server) + 3))),
@@ -278,7 +278,7 @@ function prettyLogs(ns) {
 			ns.formatNumber(getMaxMoney(server)).toString().padStart(8, " "),
 			percColour((getCash(server) / getMaxMoney(server) * 100).toFixed(2)),
 			util.digiClock(ns.getWeakenTime(server)),
-			server == prsm_target ? `${server} ${util.ansi.w}---${util.ansi.y}Δ<` : server
+			server == peekyPorty(ns, "loop/prsm.js") ? `${server} ${util.ansi.w}---${util.ansi.y}Δ<` : server
 		]), ["sec", " Δ ", "  \$cur  ", "  \$max  ", "   %   ", "  ~ete  ", ` Target ~ ${funded_list.length}/${funded_count}`]]
 			.forEach(printLogLine),
 		ns.print([
@@ -351,7 +351,7 @@ async function runScripts(ns, is_first_start) {
 					!!runpid
 						? (await ns.getPortHandle(runpid).nextWrite(), (is_first_start && (await util.slp(70 * Math.random()), ns.tprintf(`${util.ansi.g}${script} passed init`))))
 						: (ns.tprintf(`${util.ansi.r}!! ${script} DID NOT RUN !!`), await 0)))(ns.run(script)),
-				Promise.resolve()
+				await 0
 			)),
 		CNST.LOOP_FUNCTIONS.map(s => `loop/${s}.js`).forEach(script => !ns.isRunning(script) && ns.run(script)),
 		(
@@ -376,17 +376,17 @@ export async function gvnr(ns) {
 		await runLoop(false, timer + refresh_delay)
 	);
 	(
-		ns.atExit(() => ns.closeTail(), CNST.HOOK0.innerText = "", CNST.HOOK1.innerText = ""), // Clears the overview on exit to prevent stale data
 		ns.tail(),
 		ns.disableLog('ALL'),
 		ns.tprintf(`${util.ansi.m}** ./gvnr.js **`),
+		ns.atExit(() => ns.closeTail(), CNST.HOOK0.innerText = "", CNST.HOOK1.innerText = ""), // Clears the overview on exit to prevent stale data
 		await runLoop(true, 0)
 	)
 }
 
 /** @param {NS} ns */
 export function writeLaunchers(ns) {
-	const writeFile = (type, func) => ns.write(`${type}/${func}.js`, `import { ${func} } from "func.js"; export const main = async ns =>(await ${func}(ns,ns.args[0]), ns.atExit(() => (ns.clearPort(ns.pid),ns.writePort(ns.pid, ""))));`, "w");
+	const writeFile = (type, func) => ns.write(`${type}/${func}.js`, `import { ${func} } from "lib.js"; export const main = async ns =>(await ${func}(ns,ns.args[0]), ns.atExit(() => (ns.clearPort(ns.pid),ns.writePort(ns.pid, ""))));`, "w");
 	(
 		["oneshot", "loop"].forEach(dir => ns.ls("home", dir).forEach(s => ns.rm(s))),
 		CNST.STANDALONE_FUNCTIONS.forEach(func => writeFile("", func)),
@@ -453,14 +453,14 @@ export async function donate(ns, s = ns.singularity) {
 /** @param {NS} ns */
 export async function installAugs(ns) {
 	const date = new Date();
-	const timestamp = `${date.toLocaleTimeString()} ${date.toLocaleDateString()}`;
+	const timestamp = Date().slice(4,24);
 	const augs_array = JSON.parse(ns.read("temp/availableAugs.txt")).filter(aug => aug.fact.name != CNST.GANG_NAME);
 	const bought_augs = JSON.parse(ns.read("temp/boughtAugs.txt"));
 	const time_since_last_aug = date - (ns.read("temp/lastAugTime.txt") ?? date);
 	const lowest_price = augs_array.reduce((a, b) => a.aug != CNST.TRP && a?.price < b?.price ? a : b, Infinity)?.price ?? 0;
 	const favour_log = aug => `increased ${aug.fact.name} favour by ${Math.floor(aug.favdelta)} to ${Math.floor(aug.favdelta + aug.fav)} - ${timestamp}}`;
 	const timeout_log = `timeout - \$${ns.formatNumber(ns.getServerMoneyAvailable("home"))}/\$${ns.formatNumber(lowest_price)}, multi x${Math.floor(ns.read("temp/priceRatio.txt"))} - ${timestamp}`;
-	const writeLog = log => (ns.write("temp/installAugsReason.txt", `installAugs #${(+(ns.read("temp/installCounter.txt")) + 1)}: ${log}`, "w"), true);
+	const writeLog = log => (ns.write("temp/installAugsReason.txt", `installAugs #${(1 + +ns.read("temp/installCounter.txt"))}: ${log}`, "w"), true);
 	const fav_to_donate = 150 * await Run(ns, "getBitNodeMultipliers", [], ".RepToDonateToFaction");
 	const checkFavour = () => augs_array.some(aug => aug.fact.fav < fav_to_donate && (aug.fact.favdelta >= 50 || aug.fact.favdelta + aug.fact.fav > fav_to_donate) && writeLog(favour_log(aug)));
 	const checkTimeout = () => (time_since_last_aug > 1800000 && lowest_price > ns.getServerMoneyAvailable("home")) ? (writeLog(timeout_log)) : false;
@@ -471,7 +471,7 @@ export async function installAugs(ns) {
 		&& !!bought_augs.length // and augs available
 		&& (checkTimeout() || checkFavour()) // and (timed out or can hit favour breakpoint)
 		&& ( // then install
-			ns.write("temp/installCounter.txt", +(ns.read("temp/installCounter.txt") + 1), "w"),
+			ns.write("temp/installCounter.txt", 1 + +ns.read("temp/installCounter.txt"), "w"),
 			ns.write("report/installAugsLog.txt", ns.read("temp/installAugsReason.txt") + "\n", "a"),
 			await Run(ns, "singularity.installAugmentations", ["rset.js"])
 		)
@@ -932,7 +932,7 @@ export async function prsm(ns) {
 
 /** @param {NS} ns */
 export async function stonks(ns, s = ns.stock) {
-	let thing = Object.fromEntries(s.getSymbols().map(sym => [sym, { "ask": s.getAskPrice(sym), "delta": 0, "previous": 0 }]));
+	const thing = Object.fromEntries(s.getSymbols().map(sym => [sym, { "ask": s.getAskPrice(sym), "delta": 0, "previous": 0 }]));
 	(
 		s.purchaseWseAccount(),
 		s.getSymbols().forEach(s =>
@@ -993,10 +993,9 @@ export async function neofetch(ns) {
 }
 
 
-
 // Corp WIP
 
-/** @param {NS} ns */
+/** @param {NS} ns 
 export async function corp(ns, c = ns.corporation) {
 	const cities = ["Sector-12", "Aevum", "Chongqing", "New Tokyo", "Ishima", "Volhaven"];
 	const corpname = "corp corp", agridivname = "plont corp", chemdivname = "chem corp", tobdivname = "cough corp", watdivname = "wet corp";
@@ -1195,3 +1194,4 @@ export async function corp(ns, c = ns.corporation) {
 			await ns.asleep(1000);
 	}
 }
+*/
