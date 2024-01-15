@@ -29,20 +29,20 @@ export const CNST = {
 		"Joey Tagliatelle",
 		"Johnny Segment",
 	],
-	LOOP_FUNCTIONS: [/*"stan",*/ "runGang", "prsm"],
+	LOOP_FUNCTIONS: ["stan", "runGang", "prsm"],
 	ONESHOT_FUNCTIONS: [
 		"clean",
+		"darkwebShopping",
 		"ownedAugs",
 		"availableAugs",
 		"hacknetShindigs",
 		"pServ",
-		"murderate",
 		"factionJoin",
 		"factWork",
+		"murderate",
 		"d43m0nD357r0y",
 		"ramUp",
 		"coresUp",
-		"darkwebShopping",
 		"buyTOR",
 		"backdoor",
 		"graft",
@@ -63,6 +63,16 @@ export const CNST = {
 	HOOK1: eval("document").getElementById('overview-extra-hook-1'),
 };
 
+
+async function jankAcceptGift(ns) {
+	if (ns.stanek.acceptGift()) return;
+	if (ns.getPlayer().city != "Chongqing") { ns.singularity.travelToCity("Chongqing"); }
+	ns.singularity.goToLocation("Church of the Machine God");
+	await ns.sleep(1);
+	for (const elem of eval('document').getElementsByTagName("button")) {
+		if (elem.outerText == "Accept Stanek's Gift") elem.click();
+	}
+}
 
 export function main(n) {
 	(
@@ -161,7 +171,7 @@ export async function is_Busy(ns) {
 }
 
 
-function sGet(ns, m = new Set(["home"])) {
+export function sGet(ns, m = new Set(["home"])) {
 	return (m.forEach(h => ns.scan(h).map(s => m.add(s))), [...m])
 }
 
@@ -198,7 +208,7 @@ export function factionJoin(n, s = n.singularity) {
 }
 
 export function darkwebShopping(n) {
-	["BruteSSH", "FTPCrack", "relaySMTP", "HTTPWorm", "SQLInject"].map(p=>n.singularity.purchaseProgram(`${p}.exe`))
+	["BruteSSH", "FTPCrack", "relaySMTP", "HTTPWorm", "SQLInject"].map(p => n.singularity.purchaseProgram(`${p}.exe`))
 }
 
 export async function murderate(ns, s = ns.singularity) {
@@ -211,7 +221,8 @@ export async function bd(n, target, s = n.singularity) {
 
 export function persuade(n, a = (s, p) => n.scan(s).forEach(v => v != p ? a(v, s) : [n.brutessh, n.ftpcrack, n.relaysmtp, n.sqlinject, n.httpworm, n.nuke].forEach(p => { try { p(s) } catch { } }))) { a("home") };
 
-export async function d43m0nD357r0y(ns, s = ns.singularity, date = new Date(), wd = "w0r1d_d43m0n") {
+/** @param {NS} ns */
+export async function d43m0nD357r0y(ns, date = new Date(), wd = "w0r1d_d43m0n") {
 	(
 		sGet(ns).includes(wd)
 		&& await Run(ns, "getHackingLevel") > await Run(ns, "getServerRequiredHackingLevel", [wd])
@@ -294,7 +305,7 @@ function prettyLogs(ns) {
 	)
 };
 
-function prettyOverview(ns, timer) {
+async function prettyOverview(ns, timer) {
 	const bar = "<>".repeat(8);
 	const prsm_target = peekyPorty(ns, "loop/prsm.js");
 	const gang_info = peekyPorty(ns, "loop/runGang.js");
@@ -304,7 +315,7 @@ function prettyOverview(ns, timer) {
 	const overview_array = [
 		[`bitnode:`, `${getCurrentNode(ns)}`],
 		[`pserv:`, `${sGet(ns).filter(s => s.startsWith("#")).length}/${ns.getPurchasedServerLimit()}`],
-		[`w_d lvl:`, `${Math.round(3000 * ns.getBitNodeMultipliers().WorldDaemonDifficulty)}`],
+		[`w_d lvl:`, `${Math.round(3000 * await Run(ns, "getBitNodeMultipliers", [], ".WorldDaemonDifficulty"))}`],
 		[`city:`, `${ns.getPlayer().city}`],
 		[`karma:`, `${ns.formatNumber(ns.heart.break())}`],
 		[bar, bar],
@@ -370,7 +381,7 @@ export async function gvnr(ns) {
 	const refresh_delay = 1;
 	const runLoop = async (is_first_start, timer) => (
 		prettyLogs(ns),
-		prettyOverview(ns, timer),
+		await prettyOverview(ns, timer),
 		timer % 30 == 0 && await runScripts(ns, is_first_start),
 		await util.slp(refresh_delay * 1000),
 		await runLoop(false, timer + refresh_delay)
@@ -379,7 +390,7 @@ export async function gvnr(ns) {
 		ns.tail(),
 		ns.disableLog('ALL'),
 		ns.tprintf(`${util.ansi.m}** ./gvnr.js **`),
-		ns.atExit(() => ns.closeTail(), CNST.HOOK0.innerText = "", CNST.HOOK1.innerText = ""), // Clears the overview on exit to prevent stale data
+		ns.atExit(() => (CNST.HOOK0.innerText = "", CNST.HOOK1.innerText = "")), // Clears the overview on exit to prevent stale data)
 		await runLoop(true, 0)
 	)
 }
@@ -453,12 +464,12 @@ export async function donate(ns, s = ns.singularity) {
 /** @param {NS} ns */
 export async function installAugs(ns) {
 	const date = new Date();
-	const timestamp = Date().slice(4,24);
+	const timestamp = Date().slice(4, 24);
 	const augs_array = JSON.parse(ns.read("temp/availableAugs.txt")).filter(aug => aug.fact.name != CNST.GANG_NAME);
 	const bought_augs = JSON.parse(ns.read("temp/boughtAugs.txt"));
 	const time_since_last_aug = date - (ns.read("temp/lastAugTime.txt") ?? date);
 	const lowest_price = augs_array.reduce((a, b) => a.aug != CNST.TRP && a?.price < b?.price ? a : b, Infinity)?.price ?? 0;
-	const favour_log = aug => `increased ${aug.fact.name} favour by ${Math.floor(aug.favdelta)} to ${Math.floor(aug.favdelta + aug.fav)} - ${timestamp}}`;
+	const favour_log = aug => `increased ${aug.fact.name} favour by ${Math.floor(aug.fact.favdelta)} to ${Math.floor(aug.fact.favdelta + aug.fav)} - ${timestamp}}`;
 	const timeout_log = `timeout - \$${ns.formatNumber(ns.getServerMoneyAvailable("home"))}/\$${ns.formatNumber(lowest_price)}, multi x${Math.floor(ns.read("temp/priceRatio.txt"))} - ${timestamp}`;
 	const writeLog = log => (ns.write("temp/installAugsReason.txt", `installAugs #${(1 + +ns.read("temp/installCounter.txt"))}: ${log}`, "w"), true);
 	const fav_to_donate = 150 * await Run(ns, "getBitNodeMultipliers", [], ".RepToDonateToFaction");
@@ -480,13 +491,15 @@ export async function installAugs(ns) {
 
 /** @param {NS} ns */
 export function buyAugs(ns, s = ns.singularity) {
+	const odd_factions = ["Bladeburners", "Church of the Machine God"];
 	const timeStamp = () => ns.write("temp/lastAugTime.txt", Date.now(), "w");
 	const termPrint = (aug) => ns.tprintf(`${util.ansi.m}Purchased ${util.ansi.c}${aug.aug}${util.ansi.m} from ${aug.fact.name} for \$${ns.formatNumber(aug.price)}`);
 	const termPrintNFG = (faction) => ns.tprintf(`${util.ansi.m}Purchased ${util.ansi.c}${CNST.NFG}${util.ansi.m} from ${faction} for \$${ns.formatNumber(s.getAugmentationPrice(CNST.NFG))}`);
 	const availableAugs = JSON.parse(ns.read("temp/availableAugs.txt"));
 	(
 		ns.getPlayer().factions.forEach(f => f != CNST.GANG_NAME && s.purchaseAugmentation(f, CNST.NFG) && (timeStamp(), termPrintNFG(f))),
-		availableAugs.forEach(aug => (s.purchaseAugmentation(aug.fact.name, aug.aug)) && (timeStamp(), termPrint(aug)))
+		availableAugs.forEach(aug => (s.purchaseAugmentation(aug.fact.name, aug.aug)) && (timeStamp(), termPrint(aug))),
+		odd_factions.forEach(fac => s.getAugmentationsFromFaction(fac).forEach(aug => s.purchaseAugmentation(fac, aug)))
 	)
 }
 
@@ -703,7 +716,7 @@ export async function steves(ns, s = ns.sleeve, b = ns.bladeburner, g = ns.gang)
 		&& b.getActionCountRemaining("Contract", contract)
 		&& s.setToBladeburnerAction(steve, "Take on contracts", contract)
 	));
-	const recover_or_idle = (steve) => s.getSleeve(steve).shock ? s.setToShockRecovery(steve) : s.setToIdle(steve);
+	const recover_or_idle = (steve) => !!s.getSleeve(steve).shock ? s.setToShockRecovery(steve) : s.setToIdle(steve);
 	const buy_augs = steve => (
 		s.getSleevePurchasableAugs(steve)
 			.sort((a, b) => a.cost - b.cost)
@@ -743,13 +756,15 @@ export async function bladeBurner(ns, s = ns.singularity, bb = ns.bladeburner) {
 }
 
 /** @param {NS} ns */
-export async function stan(ns, s = ns.stanek, _ = s.acceptGift()) {
+export async function stan(ns, s = ns.stanek) {
+	await jankAcceptGift(ns);
+	s.acceptGift() || (await ns.sleep(1000), await stan(ns));
 	const frags = JSON.parse(ns.read("frags.js") || "0");
-	const spare_threads = Math.floor((getFreeRam(ns, "home") - 100) / ns.getScriptRam("chrg.js"));
+	const spare_threads = Math.floor((getFreeRam(ns, "home") - 50) / ns.getScriptRam("chrg.js"));
 	const target = util.getIndexArray(s.giftWidth())
 		.flatMap(x => util.getIndexArray(s.giftHeight())
 			.map(y => s.getFragment(x, y)))
-		.reduce((a, b) => !!b && b.id < 100 && a.numCharge < b.numCharge ? a : b, { numCharge: Infinity });
+		.reduce((a, b) => !!b && b.id < 100 && b.numCharge < a.numCharge ? b : a, { numCharge: Infinity });
 	(
 		!!frags
 		&& (
@@ -869,7 +884,8 @@ export async function prsm(ns) {
 			const rank = s => ns.getServerMaxMoney(s) / ns.getServerMinSecurityLevel(s);
 			return (
 				(
-					ns.hasRootAccess(s)
+					s != "home"
+					&& ns.hasRootAccess(s)
 					&& ns.getServerRequiredHackingLevel(s) <= ns.getHackingLevel() / 2
 					&& rank(s) > rank(a)
 					&& s
@@ -991,207 +1007,3 @@ export async function neofetch(ns) {
 			util.slp(Math.random() * 10 * 7)), Promise.resolve())
 	)
 }
-
-
-// Corp WIP
-
-/** @param {NS} ns 
-export async function corp(ns, c = ns.corporation) {
-	const cities = ["Sector-12", "Aevum", "Chongqing", "New Tokyo", "Ishima", "Volhaven"];
-	const corpname = "corp corp", agridivname = "plont corp", chemdivname = "chem corp", tobdivname = "cough corp", watdivname = "wet corp";
-	function buyStuff(ns, c = ns.corporation) {
-		const upgradenames = c.getConstants().upgradeNames;
-		const upgradecosts = upgradenames.map(upgrade => c.getUpgradeLevelCost(upgrade));
-		const mincostindex = upgradecosts.indexOf(Math.min(...upgradecosts));
-		let limiter = 0
-		while (c.getCorporation().funds / 4 > c.getUpgradeLevelCost(upgradenames[mincostindex])) {
-			c.levelUpgrade(upgradenames[mincostindex]); // Level upgrades from cheapest first
-			limiter++
-			if (limiter > 8) break;
-		}
-		c.getCorporation().divisions.reverse().forEach(div => {
-			while (c.getHireAdVertCost(div) < c.getCorporation().funds)
-				c.hireAdVert(div);
-		}); // Buy AdVert
-	}
-
-	async function newCycle(ns, c = ns.corporation) {
-		while (c.getCorporation().state !== "START") await ns.asleep(1000);
-		return;
-	}
-
-	async function divMaintenance(ns, c = ns.corporation, divname) {
-		ns.tprint(divname)
-		if (c.getDivision(divname).researchPoints > 70000 && !c.hasResearched("Market-TA.II")) {
-			c.research(divname, "Market-TA.I");
-			c.research(divname, "Market-TA.II");
-		}
-		let producstonlystr = "Base"
-		if (divname == tobdivname) producstonlystr = "ProductsOnly"
-		if (c.hasResearched(divname, "Market-TA.II")) {
-			c.getConstants()[`researchNames${producstonlystr}`].forEach(upgrade =>
-				(c.getDivision(divname).researchPoints > c.getResearchCost(divname, upgrade) && !c.hasResearched(divname, upgrade)) && c.research(divname, upgrade)
-			)
-		}
-		for (let city of cities) {
-			c.getOfficeSizeUpgradeCost(divname, city, 20) < c.getCorporation().funds && c.upgradeOfficeSize(divname, city, 20)
-			while (c.getOffice(divname, city).size > c.getOffice(divname, city).numEmployees) {
-				c.hireEmployee(divname, city); // Employ dudes
-			}
-			c.getOffice(divname, city).avgEnergy < 100 && c.buyTea(divname, city); // Tea
-			c.getOffice(divname, city).avgMorale < 100 && c.throwParty(divname, city, 1e6); // Parties
-			c.getUpgradeWarehouseCost(divname, city) < c.getCorporation().funds && c.upgradeWarehouse(divname, dity); // warehouse
-
-			let size = c.getOffice(divname, city).size;
-			const getJobs = (s) => Math.ceil(size * s);
-			let assignment = { ops: 0.25, eng: 0.25, mgm: 0.25, rsc: 0.20, bus: 0.05 };
-			if (divname === tobdivname && city === "Sector-12") assignment = { ops: (0.06), eng: (0.3), bus: (0.08), mgm: (0.56), rsc: 0 };
-			if (divname === tobdivname && city !== "Sector-12") assignment = { ops: (0.1), eng: (0.1), bus: (0.1), mgm: (0.2), rsc: 0.5 };
-			const assign = c.setAutoJobAssignment;
-			const tasks = {
-				rsc: "Research & Development",
-				ops: "Operations",
-				eng: "Engineer",
-				bus: "Business",
-				mgm: "Management",
-			};
-			c.getConstants().employeePositions.forEach(job => assign(divname, city, job, 0))
-			await newCycle(ns);
-			let remaining = c.getOffice(divname, city).size
-			for (let key of Object.keys(assignment)) {
-				let jobs = getJobs(assignment[key])
-				if (jobs > remaining) jobs = remaining
-				assign(divname, city, tasks[key], jobs);
-				remaining = remaining - jobs
-			}
-		}
-	}
-
-
-	async function divSetup(ns, c = ns.corporation, divname, industry) {
-		divname == agridivname ? industry = "Agriculture" : divname == chemdivname ? industry = "Chemical" : industry = "Tobacco";
-		c.getCorporation().divisions.includes(divname) || c.expandIndustry(industry, divname); // Make agri div
-		cities.forEach(city => {
-			c.purchaseWarehouse(divname, city)
-			c.getDivision(divname).cities.includes(city) || c.expandCity(divname, city); // Expand into each city
-			while (c.getOffice(divname, city).size > c.getOffice(divname, city).numEmployees) {
-				c.hireEmployee(divname, city); // Employ dudes
-			}
-			c.setAutoJobAssignment(divname, city, "Operations", 1)
-			c.setAutoJobAssignment(divname, city, "Engineer", 1)
-			c.setAutoJobAssignment(divname, city, "Business", 1)
-			c.setSmartSupply(divname, city, 1); // Set Smart Supply
-			if (divname == chemdivname) {
-				c.exportMaterial(divname, city, agridivname, city, "Chemicals", "(IPROD+IINV/10)*(-1)") // Export chems to plonts
-				c.sellMaterial(divname, city, "Chemicals", "MAX", "MP") // Sell the rest
-				c.exportMaterial(agridivname, city, divname, city, "Plants", "(IPROD+IINV/10)*(-1)") // Export plonts to chems
-			} else if (divname == agridivname) {
-				c.sellMaterial(divname, city, "Plants", "MAX", "MP"); // Sell plants and food at MAX/MP for now
-				c.sellMaterial(divname, city, "Food", "MAX", "MP");
-			}
-		});
-		// Initial warehouse upgrades
-		c.levelUpgrade("Smart Storage")
-		c.levelUpgrade("Smart Storage")
-		c.levelUpgrade("Smart Storage")
-		if (divname == tobdivname) c.makeProduct(tobdivname, "Sector-12", "Death Sticks", 1e9, 1e9)
-		cities.forEach(city => {
-			c.upgradeWarehouse(divname, city, 4); // Upgrade warehouses 3 times 
-		});
-
-		c.hireAdVert(divname)
-		c.hireAdVert(divname)
-
-		// Buy boost materials
-		while (c.getCorporation().state !== "START")
-			await ns.asleep(500);
-		cities.forEach(city => {
-			c.buyMaterial(divname, city, "Real Estate", 7438.8);
-			c.buyMaterial(divname, city, "AI Cores", 108);
-			c.buyMaterial(divname, city, "Hardware", 102.1);
-		});
-		// Set purchases back to 0 	
-		while (c.getCorporation().state !== "PRODUCTION")
-			await ns.asleep(500);
-		cities.forEach(city => {
-			c.buyMaterial(divname, city, "Real Estate", 0);
-			c.buyMaterial(divname, city, "AI Cores", 0);
-			c.buyMaterial(divname, city, "Hardware", 0);
-		});
-		return;
-	}
-
-	//ns.disableLog('ALL');
-	// Constants
-	(!(c.hasCorporation()) || c.createCorporation(corpname)) && ns.exit(); // exit if no corp made
-
-	const upgradeToLevel = (level, upgradename) => { while (level < c.getUpgradeLevel(upgradename)) c.levelUpgrade(upgradename); };
-	// Initial unlocks
-	try {
-		c.purchaseUnlock("Smart Supply");
-	} catch { }
-	// Agri division initial setup
-	c.getCorporation().divisions.includes(agridivname) || await divSetup(ns, c = ns.corporation, agridivname);
-	while (c.getInvestmentOffer().funds < 100e9) {
-		ns.clearPort(ns.pid);
-		ns.writePort(ns.pid, `agri done - Awaiting offer \$${ns.formatNumber(c.getInvestmentOffer().funds)}/\$250b`);
-		awaitdivMaintenance(ns, c, agridivname);
-		await util.slp(20000);
-	}
-	(c.getInvestmentOffer().round == 1) && c.acceptInvestmentOffer();
-	(c.getInvestmentOffer().round == 2) && c.acceptInvestmentOffer();
-	try {
-		c.purchaseUnlock("Export");
-	} catch { }
-	c.getCorporation().divisions.includes(chemdivname) || await divSetup(ns, c = ns.corporation, chemdivname);
-	while (c.getInvestmentOffer().funds < 300e9) {
-		ns.clearPort(ns.pid)
-		ns.writePort(ns.pid, `chem done - Awaiting offer \$${ns.formatNumber(c.getInvestmentOffer().funds)}/\$750b`)
-		await divMaintenance(ns, c, agridivname)
-		await divMaintenance(ns, c, chemdivname)
-		await util.slp(30000)
-	}
-	(c.getInvestmentOffer().round == 3) && c.acceptInvestmentOffer()
-
-	c.getCorporation().divisions.includes(tobdivname) || await divSetup(ns, c = ns.corporation, tobdivname);
-
-	while (true) {
-		c.getInvestmentOffer().round == 5 ? c.goPublic(c.getCorporation().numShares - 1) : (c.getInvestmentOffer().funds > 750e9) && c.acceptInvestmentOffer();
-
-		await divMaintenance(ns, c, tobdivname);
-		await divMaintenance(ns, c, agridivname);
-		await divMaintenance(ns, c, chemdivname);
-		buyStuff(ns);
-
-		await newCycle(ns)
-		// Discontinue prods when maxed
-		const prodnames = ["Death Sticks", "Death Snuff", "Death Vapes", "Death Cigars"];
-		let currprods = c.getDivision(tobdivname).products;
-		if (c.getDivision(tobdivname).products.length == c.getDivision(tobdivname).maxProducts) {
-			const prodmultis = c.getDivision(tobdivname).products.map(product => c.getProduct(tobdivname, "Sector-12", product).rating);
-			if (c.getDivision(tobdivname).products.length === c.getDivision(tobdivname).maxProducts && !prodmultis.includes(0)) { // Don't kill products if we are still developing
-				const minmulti = Math.min(...prodmultis);
-				const minmultiindex = prodmultis.indexOf(minmulti);
-				c.discontinueProduct(tobdivname, currprods[minmultiindex]);
-			}
-		}
-		currprods = c.getDivision(tobdivname).products;
-		// Make prods up to max
-		if (c.getDivision(tobdivname).products.length < c.getDivision(tobdivname).maxProducts) {
-			const availablenames = prodnames.filter(name => !currprods.includes(name));
-			if (availablenames.length && c.getCorporation().funds > 0) {
-				c.makeProduct(tobdivname, "Sector-12", availablenames[0], c.getCorporation().funds / 3, c.getCorporation().funds / 3);
-			}
-		}
-		cities.forEach(city => currprods.forEach(prod => c.sellProduct(tobdivname, city, prod, "MAX", "MP")));
-		c.hasResearched(tobdivname, "Market-TA.II") && currprods.forEach(prod => c.setProductMarketTA2(tobdivname, prod, true));
-		ns.clearPort(ns.pid)
-		let publicinfo = `        Round - ${ns.formatNumber(c.getInvestmentOffer().round)}, ` +
-			`Offer - \$${ns.formatNumber(c.getInvestmentOffer().funds)}, `;
-		if (c.getCorporation().public) publicinfo = `        Public - Share price \$${c.getCorporation().sharePrice}`
-		ns.writePort(ns.pid, `Funds - \$${ns.formatNumber(c.getCorporation().funds)}, ` + publicinfo);
-		while (c.getCorporation().state !== "SALE")
-			await ns.asleep(1000);
-	}
-}
-*/
