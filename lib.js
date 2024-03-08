@@ -162,26 +162,21 @@ export function main(n) {
  * @param {NS} ns The ns object
  * @param {string} path String of ns function to run, eg "gang.getMemberNames" or "getPlayer"
  * @param {array} params Parameters to run function with, eg ["n00dles",{ramOverride:10}]
- * @param {string} props properties to access, eg ".skills.hacking". Include the preceding "." or "?.""
- * @return {Promise<Any>} Whatever the passed function returns
- */
-export async function oldRun(ns, path, params, props) {
-	const runstring = `await ns.${path}(${(params || []).map(JSON.stringify)})${props ?? ""}`;
-	ns.write(`run/${ns.pid}.js`, `export async function main(ns) { const val = ${runstring}; ns.atExit(()=>ns.writePort(ns.pid,val||0)) }`, "w");
-	const run_pid = ns.run(`run/${ns.pid}.js`, { ramOverride: 1.6 + ns.getFunctionRamCost(path) });
-	return !run_pid
-		? (ns.tprintf(`${util.ansi.r}!! ${path} DID NOT RUN !!`), "")
-		: (await ns.nextPortWrite(run_pid), ns.readPort(run_pid));
-};
-
-/**
- * @param {NS} ns The ns object
- * @param {string} path String of ns function to run, eg "gang.getMemberNames" or "getPlayer"
- * @param {array} params Parameters to run function with, eg ["n00dles",{ramOverride:10}]
  * @param {string} props properties to access, eg "skills".
  * @return {Promise<Any> | null} Whatever the passed function returns, or null if it fails to execute (probably low ram)
  */
 export async function Run(ns, path, params = [], props = "") {
+	!ns.fileExists("run.js")
+		&& ns.write(`run.js`, [
+			'/** @param ns {NS} */',
+			'export async function main(ns) {',
+			'const [path, props, ...params] = ns.args;',
+			'const func_return = path.split(".").reduce((a, b) => a[b], ns)(...params)',
+			'const return_value = !props ? func_return : props.split(".").reduce((a,b) => a[b], func_return)',
+			'ns.atExit(() => ns.writePort(ns.pid, return_value || 0));',
+			'}',
+		].join("\n"),
+			"w");
 	const run_pid = ns.run(`run.js`, { ramOverride: 1.6 + ns.getFunctionRamCost(path) }, path, props, ...params);
 	return !run_pid
 		? (ns.tprintf(`${util.ansi.r}!! ${path} DID NOT RUN !!`), null)
@@ -258,8 +253,8 @@ function getFreeRam(ns, server) {
 }
 
 export async function is_Busy(ns) {
-	return (await Run(ns, "singularity.getCurrentWork", "", "?.type") == "GRAFTING" ||
-		await Run(ns, "bladeburner.inBladeburner") && !!(await Run(ns, "bladeburner.getCurrentAction", "", ".name")));
+	return (await Run(ns, "singularity.getCurrentWork", "", "type") == "GRAFTING" ||
+		await Run(ns, "bladeburner.inBladeburner") && !!(await Run(ns, "bladeburner.getCurrentAction", "", "name")));
 }
 
 
@@ -308,7 +303,7 @@ export async function darkwebShopping(ns) {
 }
 
 export async function murderate(ns, s = ns.singularity) {
-	!await is_Busy(ns) && (await Run(ns, "getPlayer", [], ".numPeopleKilled") < 30) && (await Run(ns, "singularity.stopAction"), await Run(ns, "singularity.commitCrime", ["Homicide", 0]));
+	!await is_Busy(ns) && (await Run(ns, "getPlayer", [], "numPeopleKilled") < 30) && (await Run(ns, "singularity.stopAction"), await Run(ns, "singularity.commitCrime", ["Homicide", 0]));
 }
 
 export async function bd(n, target, s = n.singularity) {
@@ -411,7 +406,7 @@ async function prettyOverview(ns, timer) {
 	const overview_array = [
 		[`bitnode:`, `${getCurrentNode(ns)}`],
 		[`pserv:`, `${sGet(ns).filter(s => s.startsWith("#")).length}/${ns.getPurchasedServerLimit()}`],
-		[`w_d lvl:`, `${Math.round(3000 * await Run(ns, "getBitNodeMultipliers", [], ".WorldDaemonDifficulty"))}`],
+		[`w_d lvl:`, `${Math.round(3000 * await Run(ns, "getBitNodeMultipliers", [], "WorldDaemonDifficulty"))}`],
 		[`city:`, `${ns.getPlayer().city}`],
 		[`karma:`, `${ns.formatNumber(ns.heart.break())}`],
 		[bar, bar],
@@ -493,16 +488,6 @@ export async function gvnr(ns) {
 
 /** @param {NS} ns */
 export function writeLaunchers(ns) {
-	ns.write(`run.js`, `/** @param ns {NS} */
-export async function main(ns) {
-	const [path, props, ...params] = ns.args;
-	const split_path = path.split(".");
-	const return_value = (v => props ? v?.[props] : v)(
-			(split_path.length != 1 ? ns[split_path[0]][split_path[1]] : ns[path])(...params)
-	);
-	ns.atExit(() => ns.writePort(ns.pid, return_value || 0));
-}`,
-		"w");
 	const writeFile = (type, func) => ns.write(`${type}/${func}.js`, `import { ${func} } from "lib.js"; export const main = async ns =>(await ${func}(ns,ns.args[0]), ns.atExit(() => (ns.clearPort(ns.pid),ns.writePort(ns.pid, ""))));`, "w");
 	(
 		["oneshot", "loop"].forEach(dir => ns.ls("home", dir).forEach(s => ns.rm(s))),
@@ -521,7 +506,7 @@ export async function graft(ns, g = ns.grafting) {
 			"OmniTek InfoLoad",
 			"nickofolas Congruity Implant",
 		]
-			.some(aug => g.graftAugmentation(aug,0) && ns.write("temp/workReport.txt", `grafting ${aug}`, "w"));
+			.some(aug => g.graftAugmentation(aug, 0) && ns.write("temp/workReport.txt", `grafting ${aug}`, "w"));
 }
 
 /** @param {NS} ns */
@@ -547,7 +532,7 @@ export async function factWork(ns, s = ns.singularity) {
 /** @param {NS} ns */
 export async function donate(ns, s = ns.singularity) {
 	const availableAugs = JSON.parse(ns.read("temp/availableAugs.txt"));
-	const rep_multi = await Run(ns, "getBitNodeMultipliers", "", ".RepToDonateToFaction");
+	const rep_multi = await Run(ns, "getBitNodeMultipliers", "", "RepToDonateToFaction");
 	const nfginfo = JSON.parse(ns.read("temp/nfgInfo.txt"));
 	const donatefaction = "The Black Hand";
 	(
@@ -578,7 +563,7 @@ export async function installAugs(ns) {
 	const favour_log = aug => `increased ${aug.fact.name} favour by ${Math.floor(aug.fact.favdelta)} to ${Math.floor(aug.fact.favdelta + aug.fact.fav)} - ${timestamp}}`;
 	const timeout_log = `timeout - \$${ns.formatNumber(ns.getServerMoneyAvailable("home"))}/\$${ns.formatNumber(lowest_price)}, multi x${Math.floor(ns.read("temp/priceRatio.txt"))} - ${timestamp}`;
 	const writeLog = log => (ns.write("temp/installAugsReason.txt", `installAugs #${(1 + +ns.read("temp/installCounter.txt"))}: ${log}`, "w"), true);
-	const fav_to_donate = 150 * await Run(ns, "getBitNodeMultipliers", [], ".RepToDonateToFaction");
+	const fav_to_donate = 150 * await Run(ns, "getBitNodeMultipliers", [], "RepToDonateToFaction");
 	const checkFavour = () => augs_array.some(aug => aug.fact.fav < fav_to_donate && (aug.fact.favdelta >= 50 || aug.fact.favdelta + aug.fact.fav > fav_to_donate) && writeLog(favour_log(aug)));
 	const checkTimeout = () => (time_since_last_aug > 1800000 && lowest_price > ns.getServerMoneyAvailable("home")) ? (writeLog(timeout_log)) : false;
 	const hasTRP = () => bought_augs.includes(CNST.TRP) && writeLog("installed The Red Pill");
@@ -958,7 +943,7 @@ export async function golfedGang(n, g = n.gang,
 export async function prsm(ns) {
 	// PRiSM -Δ<
 	// A batcher
-	
+
 	ns.disableLog('ALL');
 	ns.enableLog('exec');
 	const hack_percentage = 0.01; // decimal percentage to hack
