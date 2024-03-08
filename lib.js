@@ -3,6 +3,82 @@ export const CNST = {
 	NFG: "NeuroFlux Governor",
 	TRP: "The Red Pill",
 	GANG_NAME: "Slum Snakes",
+	AUGS_TO_BUY: [
+		"Social Negotiation Assistant (S.N.A)",
+		"Nuoptimal Nootropic Injector Implant",
+		"ADR-V1 Pheromone Gene",
+		"Speech Enhancement",
+		"Wired Reflexes",
+		"Cranial Signal Processors - Gen I",
+		"BitWire",
+		"Synaptic Enhancement Implant",
+		"Neurotrainer I",
+		"Cranial Signal Processors - Gen II",
+		"CRTX42-AA Gene Modification",
+		"Embedded Netburner Module",
+		"Neural-Retention Enhancement",
+		"Artificial Synaptic Potentiation",
+		"Neurotrainer II",
+		"The Black Hand",
+		"Embedded Netburner Module Core Implant",
+		"Cranial Signal Processors - Gen IV",
+		"Neuralstimulator",
+		"Enhanced Myelin Sheathing",
+		"Neural Accelerator",
+		"Cranial Signal Processors - Gen III",
+		"DataJack",
+		"Embedded Netburner Module Core V2 Upgrade",
+		"BitRunners Neurolink",
+		"Cranial Signal Processors - Gen V",
+		"Artificial Bio-neural Network Implant",
+		"CashRoot Starter Kit",
+		"Augmented Targeting I",
+		"Augmented Targeting II",
+		"Speech Processor Implant",
+		"Nanofiber Weave",
+		"InfoLoad",
+		"ADR-V2 Pheromone Gene",
+		"ECorp HVMind Implant",
+		"QLink",
+		"nickofolas Congruity Implant",
+		"The Red Pill"
+	],
+	ALL_FACTIONS: [
+		"Illuminati",
+		"Daedalus",
+		"The Covenant",
+		"ECorp",
+		"MegaCorp",
+		"Bachman & Associates",
+		"Blade Industries",
+		"NWO",
+		"Clarke Incorporated",
+		"OmniTek Incorporated",
+		"Four Sigma",
+		"KuaiGong International",
+		"Fulcrum Secret Technologies",
+		"BitRunners",
+		"The Black Hand",
+		"NiteSec",
+		"Aevum",
+		"Chongqing",
+		"Ishima",
+		"New Tokyo",
+		"Sector-12",
+		"Volhaven",
+		"Speakers for the Dead",
+		"The Dark Army",
+		"The Syndicate",
+		"Silhouette",
+		"Tetrads",
+		"Slum Snakes",
+		"Netburners",
+		"Tian Di Hui",
+		"CyberSec",
+		"Bladeburners",
+		"Church of the Machine God",
+		"Shadows of Anarchy",
+	],
 	MEMBER_NAMES: [
 		"Tony Harrison",
 		"Kathy Rindhoops",
@@ -48,15 +124,15 @@ export const CNST = {
 		"graft",
 		//"stonks",
 		"donate",
-		"installAugs",
 		"buyAugs",
+		"installAugs",
 		"cityAugs",
 		"persuade",
 		"steves",
-		"bladeBurner",
+		"bburner",
 	],
 	STANDALONE_FUNCTIONS: ["bd", "gvnr", "neofetch"],
-	STANDALONE_SCRIPTS: ["solveallcontracts.js"],
+	STANDALONE_SCRIPTS: ["contracts.js"],
 	WIN: eval("window"),
 	DOC: eval("document"),
 	HOOK0: eval("document").getElementById('overview-extra-hook-0'),
@@ -89,13 +165,27 @@ export function main(n) {
  * @param {string} props properties to access, eg ".skills.hacking". Include the preceding "." or "?.""
  * @return {Promise<Any>} Whatever the passed function returns
  */
-export async function Run(ns, path, params, props) {
+export async function oldRun(ns, path, params, props) {
 	const runstring = `await ns.${path}(${(params || []).map(JSON.stringify)})${props ?? ""}`;
-	ns.write(`run/${ns.pid}.js`, `export async function main(ns) { const val = JSON.stringify(${runstring}); ns.atExit(()=>ns.writePort(ns.pid,val||0)) }`, "w");
+	ns.write(`run/${ns.pid}.js`, `export async function main(ns) { const val = ${runstring}; ns.atExit(()=>ns.writePort(ns.pid,val||0)) }`, "w");
 	const run_pid = ns.run(`run/${ns.pid}.js`, { ramOverride: 1.6 + ns.getFunctionRamCost(path) });
-	!run_pid && ns.tprintf(`${util.ansi.r}!! ${path} DID NOT RUN !!`);
-	await ns.getPortHandle(run_pid).nextWrite();
-	return JSON.parse(ns.readPort(run_pid));
+	return !run_pid
+		? (ns.tprintf(`${util.ansi.r}!! ${path} DID NOT RUN !!`), "")
+		: (await ns.nextPortWrite(run_pid), ns.readPort(run_pid));
+};
+
+/**
+ * @param {NS} ns The ns object
+ * @param {string} path String of ns function to run, eg "gang.getMemberNames" or "getPlayer"
+ * @param {array} params Parameters to run function with, eg ["n00dles",{ramOverride:10}]
+ * @param {string} props properties to access, eg "skills".
+ * @return {Promise<Any> | null} Whatever the passed function returns, or null if it fails to execute (probably low ram)
+ */
+export async function Run(ns, path, params = [], props = "") {
+	const run_pid = ns.run(`run.js`, { ramOverride: 1.6 + ns.getFunctionRamCost(path) }, path, props, ...params);
+	return !run_pid
+		? (ns.tprintf(`${util.ansi.r}!! ${path} DID NOT RUN !!`), null)
+		: (await ns.nextPortWrite(run_pid), ns.readPort(run_pid));
 };
 
 export const util = {
@@ -105,7 +195,6 @@ export const util = {
 	* @param {string} text Text to colour
 	* @param {string} extra_style Extra CSS style, eg "font-size:100px; font-weight:bold;"
 	* @param {Number} timeout Number of ms to run the rainbow effect for
-	* @return {Promise<Any>} Whatever the passed function returns
 	*/
 	lmaocat: async function (element_id, extra_style, timeout = 10000) {
 		await new Promise(r => setTimeout(r, 100)); // wait a moment to make sure the react element has loaded
@@ -160,6 +249,9 @@ export const util = {
 
 	slp: async t => await new Promise(r => setTimeout(r, t)),
 }
+export function test(ns) {
+
+}
 
 function getFreeRam(ns, server) {
 	return ns.getServerMaxRam(server) - ns.getServerUsedRam(server)
@@ -170,6 +262,10 @@ export async function is_Busy(ns) {
 		await Run(ns, "bladeburner.inBladeburner") && !!(await Run(ns, "bladeburner.getCurrentAction", "", ".name")));
 }
 
+
+
+//const z = t => [t, ...ns.scan(t).slice(t != 'home').flatMap(z)];
+//return z('home');
 
 export function sGet(ns, m = new Set(["home"])) {
 	return (m.forEach(h => ns.scan(h).map(s => m.add(s))), [...m])
@@ -203,12 +299,12 @@ export async function coresUp(ns) {
 	(await Run(ns, "singularity.upgradeHomeCores") && (ns.tprintf(util.ansi.g + "Upgraded home cores")) || coresUp(ns))
 }
 
-export function factionJoin(n, s = n.singularity) {
-	s.checkFactionInvitations().forEach(f => (s.joinFaction(f), n.tprintf(`${util.ansi.m}Joined ${f}`)))
+export async function factionJoin(n, s = n.singularity) {
+	(await Run(n, "singularity.checkFactionInvitations")).forEach(f => (s.joinFaction(f), n.tprintf(`${util.ansi.m}Joined ${f}`)))
 }
 
-export function darkwebShopping(n) {
-	["BruteSSH", "FTPCrack", "relaySMTP", "HTTPWorm", "SQLInject"].map(p => n.singularity.purchaseProgram(`${p}.exe`))
+export async function darkwebShopping(ns) {
+	await ["BruteSSH", "FTPCrack", "relaySMTP", "HTTPWorm", "SQLInject"].reduce(async (a, b) => (await a, await Run(ns, "singularity.purchaseProgram", [`${b}.exe`])), Promise.resolve())
 }
 
 export async function murderate(ns, s = ns.singularity) {
@@ -239,7 +335,7 @@ export function pServ(ns) {
 	(
 		(
 			ns.purchaseServer("#", 8)
-			|| sGet(ns).some(s => ns.upgradePurchasedServer(s, ns.getServerMaxRam(s) * 2))
+			|| sGet(ns).some(s => [...Array(21).keys()].map(n => n << 1).some(r => ns.upgradePurchasedServer(s, r)))
 		)
 		&& pServ(ns)
 	)
@@ -250,7 +346,6 @@ function prettyLogs(ns) {
 	const getMaxMoney = ns.getServerMaxMoney;
 	const getSecLvl = ns.getServerSecurityLevel;
 	const getSecMin = ns.getServerMinSecurityLevel;
-	const printLogLine = line => ns.print(" " + line.join(" | "));
 	const percColour = perc => (
 		`${(perc < 33
 			? util.ansi.r
@@ -261,11 +356,9 @@ function prettyLogs(ns) {
 					: util.ansi.g)}${perc.padStart(6, " ")}%${util.ansi.d}`
 	);
 	const secColour = sec => (
-		`${(sec < 0
+		`${(sec < 5
 			? util.ansi.g
-			: sec < 66
-				? util.ansi.y
-				: util.ansi.r)}${("" + sec).padStart(3, " ")}${util.ansi.d}`
+			: util.ansi.y)}${("" + sec).padStart(3, " ")}${util.ansi.d}`
 	);
 	const main_list = sGet(ns);
 	const access_list = main_list.filter(s => ns.hasRootAccess(s) && ns.getServerRequiredHackingLevel(s) <= ns.getHackingLevel());
@@ -278,20 +371,23 @@ function prettyLogs(ns) {
 	const num_nfg = bought_augs.reduce((acc, aug) => acc + (aug == CNST.NFG), 0);
 	const num_other_augs = readyFiley(ns, "temp/installedAugs.txt").reduce((acc, aug) => acc + (aug != CNST.NFG), 0);
 	const aug_info = bought_augs.filter(a => a != CNST.NFG).map(aug => ` ·${aug}`).concat(num_nfg ? [(` ·NeuroFlux Governor x${num_nfg}\n`)] : null).join("\n");
+	const printLogLine = line => ns.print(" " + line.join(" | "));
 	(
 		ns.resizeTail(800, 1000),
 		ns.moveTail(CNST.WIN.innerWidth - 1150, 0),
 		ns.clearLog(),
-		[...funded_list.map(server => [
-			Math.ceil(getSecLvl(server)).toString().padStart(3, " "),
-			secColour(Math.floor(getSecLvl(server) - (getSecMin(server) + 3))),
-			ns.formatNumber(getCash(server)).toString().padStart(8, " "),
-			ns.formatNumber(getMaxMoney(server)).toString().padStart(8, " "),
-			percColour((getCash(server) / getMaxMoney(server) * 100).toFixed(2)),
-			util.digiClock(ns.getWeakenTime(server)),
-			server == peekyPorty(ns, "loop/prsm.js") ? `${server} ${util.ansi.w}---${util.ansi.y}Δ<` : server
-		]), ["sec", " Δ ", "  \$cur  ", "  \$max  ", "   %   ", "  ~ete  ", ` Target ~ ${funded_list.length}/${funded_count}`]]
-			.forEach(printLogLine),
+		[
+			...funded_list.map(server => [
+				Math.ceil(getSecLvl(server)).toString().padStart(3, " "),
+				secColour(Math.floor(getSecLvl(server) - getSecMin(server))),
+				ns.formatNumber(getCash(server)).toString().padStart(8, " "),
+				ns.formatNumber(getMaxMoney(server)).toString().padStart(8, " "),
+				percColour((getCash(server) / getMaxMoney(server) * 100).toFixed(2)),
+				util.digiClock(ns.getWeakenTime(server)),
+				server == peekyPorty(ns, "loop/prsm.js") ? `${server} ${util.ansi.w}---${util.ansi.y}Δ<` : server
+			]),
+			["sec", " Δ ", "  \$cur  ", "  \$max  ", "   %   ", "  ~ete  ", ` Target ~ ${funded_list.length}/${funded_count}`],
+		].forEach(printLogLine),
 		ns.print([
 			"",
 			` home - ${util.ramFormat(getFreeRam(ns, "home"))}/${util.ramFormat(ns.getServerMaxRam("home"))}`,
@@ -323,7 +419,7 @@ async function prettyOverview(ns, timer) {
 		[`\$/s:`, `\$${ns.formatNumber(ns.getScriptIncome("loop/prsm.js"))}`],
 		[`\$ total:`, `${ns.formatNumber(ns.getMoneySources().sinceInstall.hacking)}`],
 		[`xp/s:`, `${ns.formatNumber(ns.getTotalScriptExpGain())}`],
-		[`scripts:`, `${sGet(ns).flatMap(s => ns.ps(s)).length}`],
+		[`scripts:`, `${sGet(ns).reduce((a, b) => a + ns.ps(b).length, 0)}`],
 		[bar, bar],
 		[`hN Servers:`, `${hacknet_info.num}`],
 		[`hashes/Max:`, `${hacknet_info.hashes}`],
@@ -360,7 +456,7 @@ async function runScripts(ns, is_first_start) {
 				is_first_start && ns.tprintf(`${util.ansi.y}starting ${script}`),
 				await (async runpid => (
 					!!runpid
-						? (await ns.getPortHandle(runpid).nextWrite(), (is_first_start && (await util.slp(70 * Math.random()), ns.tprintf(`${util.ansi.g}${script} passed init`))))
+						? (await ns.nextPortWrite(runpid), (is_first_start && (await util.slp(70 * Math.random()), ns.tprintf(`${util.ansi.g}${script} passed init`))))
 						: (ns.tprintf(`${util.ansi.r}!! ${script} DID NOT RUN !!`), await 0)))(ns.run(script)),
 				await 0
 			)),
@@ -397,6 +493,16 @@ export async function gvnr(ns) {
 
 /** @param {NS} ns */
 export function writeLaunchers(ns) {
+	ns.write(`run.js`, `/** @param ns {NS} */
+export async function main(ns) {
+	const [path, props, ...params] = ns.args;
+	const split_path = path.split(".");
+	const return_value = (v => props ? v?.[props] : v)(
+			(split_path.length != 1 ? ns[split_path[0]][split_path[1]] : ns[path])(...params)
+	);
+	ns.atExit(() => ns.writePort(ns.pid, return_value || 0));
+}`,
+		"w");
 	const writeFile = (type, func) => ns.write(`${type}/${func}.js`, `import { ${func} } from "lib.js"; export const main = async ns =>(await ${func}(ns,ns.args[0]), ns.atExit(() => (ns.clearPort(ns.pid),ns.writePort(ns.pid, ""))));`, "w");
 	(
 		["oneshot", "loop"].forEach(dir => ns.ls("home", dir).forEach(s => ns.rm(s))),
@@ -415,7 +521,7 @@ export async function graft(ns, g = ns.grafting) {
 			"OmniTek InfoLoad",
 			"nickofolas Congruity Implant",
 		]
-			.some(aug => g.graftAugmentation(aug) && ns.write("temp/workReport.txt", `grafting ${aug}`, "w"));
+			.some(aug => g.graftAugmentation(aug,0) && ns.write("temp/workReport.txt", `grafting ${aug}`, "w"));
 }
 
 /** @param {NS} ns */
@@ -469,7 +575,7 @@ export async function installAugs(ns) {
 	const bought_augs = JSON.parse(ns.read("temp/boughtAugs.txt"));
 	const time_since_last_aug = date - (ns.read("temp/lastAugTime.txt") ?? date);
 	const lowest_price = augs_array.reduce((a, b) => a.aug != CNST.TRP && a?.price < b?.price ? a : b, Infinity)?.price ?? 0;
-	const favour_log = aug => `increased ${aug.fact.name} favour by ${Math.floor(aug.fact.favdelta)} to ${Math.floor(aug.fact.favdelta + aug.fav)} - ${timestamp}}`;
+	const favour_log = aug => `increased ${aug.fact.name} favour by ${Math.floor(aug.fact.favdelta)} to ${Math.floor(aug.fact.favdelta + aug.fact.fav)} - ${timestamp}}`;
 	const timeout_log = `timeout - \$${ns.formatNumber(ns.getServerMoneyAvailable("home"))}/\$${ns.formatNumber(lowest_price)}, multi x${Math.floor(ns.read("temp/priceRatio.txt"))} - ${timestamp}`;
 	const writeLog = log => (ns.write("temp/installAugsReason.txt", `installAugs #${(1 + +ns.read("temp/installCounter.txt"))}: ${log}`, "w"), true);
 	const fav_to_donate = 150 * await Run(ns, "getBitNodeMultipliers", [], ".RepToDonateToFaction");
@@ -584,7 +690,7 @@ export async function cityAugs(ns, s = ns.singularity, skill = ns.getPlayer().sk
 																				: needAug("OmniTek InfoLoad")
 																					? workFor(companies.oi)
 																					: needAug("Xanipher")
-																						? workFor(companies.ck)
+																						? workFor(companies.nw)
 																						: needAug("Hydroflame Left Arm")
 																							? workFor(companies.nw)
 																							: needAug("CordiARC Fusion Reactor")
@@ -626,6 +732,7 @@ export async function ownedAugs(ns) {
 		)
 	)
 }
+
 /** @param {NS} ns */
 export async function availableAugs(ns, s = ns.singularity) {
 	const owned_augs = JSON.parse(ns.read("temp/ownedAugs.txt"));
@@ -633,11 +740,11 @@ export async function availableAugs(ns, s = ns.singularity) {
 
 	const aug_object = ns.getPlayer().factions
 		.filter(faction => !forbidden_factions.includes(faction))
-		.flatMap(faction => s.getAugmentationsFromFaction(faction).filter(aug => !owned_augs.includes(aug))
+		.flatMap(faction => s.getAugmentationsFromFaction(faction).filter(aug => CNST.AUGS_TO_BUY.includes(aug) && !owned_augs.includes(aug))
 			.map(augment => ({
 				aug: augment,
 				price: s.getAugmentationPrice(augment),
-				repreq: s.getAugmentationPrice(augment),
+				repreq: s.getAugmentationRepReq(augment),
 				repdelta: s.getAugmentationRepReq(augment) - s.getFactionRep(faction),
 				fact: {
 					name: faction,
@@ -657,8 +764,7 @@ export async function backdoor(n, s = n.singularity) {
 			&& n.hasRootAccess(server)
 			&& n.getHackingLevel() > n.getServerRequiredHackingLevel(server)
 		));
-	n.print(servers)
-	servers.map(server => (
+	servers.forEach(server => (
 		!n.getRunningScript("bd.js", "home", server)?.pid
 		&& n.run("bd.js", 1, server)
 	))
@@ -740,7 +846,7 @@ export async function steves(ns, s = ns.sleeve, b = ns.bladeburner, g = ns.gang)
 }
 
 /** @param {NS} ns */
-export async function bladeBurner(ns, s = ns.singularity, bb = ns.bladeburner) {
+export async function bburner(ns, s = ns.singularity, bb = ns.bladeburner) {
 	const upSkill = () => bb.upgradeSkill(bb.getSkillNames().reduce((a, b) => bb.getSkillUpgradeCost(a) < bb.getSkillUpgradeCost(b) ? a : b)) && upSkill();
 	(
 		bb.joinBladeburnerDivision(),
@@ -757,9 +863,12 @@ export async function bladeBurner(ns, s = ns.singularity, bb = ns.bladeburner) {
 
 /** @param {NS} ns */
 export async function stan(ns, s = ns.stanek) {
+	ns.disableLog("ALL"),
+		ns.enableLog("exec"),
+		ns.run("lsg.js");
 	await jankAcceptGift(ns);
 	s.acceptGift() || (await ns.sleep(1000), await stan(ns));
-	const frags = JSON.parse(ns.read("frags.js") || "0");
+	const frags = JSON.parse(ns.read("stfr.js") || "0");
 	const spare_threads = Math.floor((getFreeRam(ns, "home") - 50) / ns.getScriptRam("chrg.js"));
 	const target = util.getIndexArray(s.giftWidth())
 		.flatMap(x => util.getIndexArray(s.giftHeight())
@@ -774,8 +883,6 @@ export async function stan(ns, s = ns.stanek) {
 		),
 		ns.writePort(ns.pid, ""),
 		await util.slp(10000),
-		ns.disableLog("ALL"),
-		ns.enableLog("exec"),
 		await stan(ns)
 	)
 }
@@ -787,7 +894,7 @@ export async function runGang(n, g = n.gang) {
 	const slp = async t => await n.sleep(t / (g.getBonusTime() > 5000 ? 25 : 1));
 	const other_gang_info = g.getOtherGangInformation;
 	const tick = async (q = () => Object.values(other_gang_info()).reduce((a, g) => a + g.power), l = q()) => (await n.sleep(50), l == q() && await tick());
-	const assignJob = (task, focus = g.getMemberNames().length == 12 ? "moneyGain" : "respectGain") => (
+	const assignJob = (task, focus = g.getMemberNames().length > 10 ? "moneyGain" : "respectGain") => (
 		g.getMemberNames().forEach(member => (
 			g.getEquipmentNames().forEach((item) => g.purchaseEquipment(member, item)),
 			["agi", "str", "def", "dex"].map(skill => g.getAscensionResult(member)?.[skill]).reduce((a, c) => a + c) > 6 && g.ascendMember(member),
@@ -851,6 +958,7 @@ export async function golfedGang(n, g = n.gang,
 export async function prsm(ns) {
 	// PRiSM -Δ<
 	// A batcher
+	
 	ns.disableLog('ALL');
 	ns.enableLog('exec');
 	const hack_percentage = 0.01; // decimal percentage to hack
@@ -859,14 +967,14 @@ export async function prsm(ns) {
 	//	
 	const decideThreads = (available, requested) => available < requested ? available : requested;
 	const getThreadDiff = (total, threads) => total - threads;
-	const dummy_player = Object.freeze(await Run(ns, "getPlayer"));
+	const dummy_player = await Run(ns, "getPlayer");
 	const getHostRam = (server, spareram = server == "home" ? (ns.getServerMoneyAvailable("home") > 150e9 ? 1000 : 100) : 0) => Math.floor(getFreeRam(ns, server) - spareram);
 	const getAvailableThreads = (script, host_list) => host_list.map(server => Math.floor(getHostRam(server) / ns.getScriptRam(`${script.name}.js`))).reduce((threads, sum) => threads + sum);
-	const modPlayer = (player, threads, target) => Object.freeze(Object.fromEntries(Object.entries(player).map(entry => (
-		(entry[0] == "exp" && (entry[1].hacking += ns.formulas.hacking.hackExp(target, player) * threads)),
-		(entry[0] == "skills" && (entry[1].hacking = ns.formulas.skills.calculateSkill(player.exp.hacking, player.mults.hacking_exp))),
-		entry
-	))));
+	const modPlayer = (player, threads, target) => Object.fromEntries(Object.entries(player).map(([key, entry]) => (
+		(key == "exp" && (entry.hacking += ns.formulas.hacking.hackExp(target, player) * threads)),
+		(key == "skills" && (entry.hacking = ns.formulas.skills.calculateSkill(player.exp.hacking, player.mults.hacking))),
+		[key, entry]
+	)));
 	const sendJobs = (object, dummy_player) => (
 		object.threads = decideThreads(object.available, object.needed),
 		object.available = getThreadDiff(object.available, object.threads),
