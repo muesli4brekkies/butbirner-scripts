@@ -172,7 +172,7 @@ export async function Run(ns, path, params = [], props = "") {
 			'export async function main(ns) {',
 			'const [path, props, ...params] = ns.args;',
 			'const func_return = path.split(".").reduce((a, b) => a[b], ns)(...params)',
-			'const return_value = !props ? func_return : props.split(".").reduce((a,b) => a[b], func_return)',
+			'const return_value = !props ? func_return : props.split(".").reduce((a,b) => a?.[b], func_return)',
 			'ns.atExit(() => ns.writePort(ns.pid, return_value || 0));',
 			'}',
 		].join("\n"),
@@ -257,8 +257,6 @@ export async function is_Busy(ns) {
 		await Run(ns, "bladeburner.inBladeburner") && !!(await Run(ns, "bladeburner.getCurrentAction", "", "name")));
 }
 
-
-
 //const z = t => [t, ...ns.scan(t).slice(t != 'home').flatMap(z)];
 //return z('home');
 
@@ -266,16 +264,20 @@ export function sGet(ns, m = new Set(["home"])) {
 	return (m.forEach(h => ns.scan(h).map(s => m.add(s))), [...m])
 }
 
-function readyFiley(ns, file, data = ns.read(file)) {
+function readyFiley(ns, file) {
+	const data = ns.read(file);
 	return JSON.parse(!!data ? data : "[]")
 }
 
-function peekyPorty(ns, script, data = ns.peek(ns.getRunningScript(script)?.pid ?? ns.pid)) {
-	return JSON.parse(data == "NULL PORT DATA" ? "[]" : data)
+function peekyPorty(ns, script) {
+	const data = ns.peek(ns.getRunningScript(script)?.pid ?? ns.pid);
+	return data == "NULL PORT DATA" ? "[]" : data
 }
 
+/** @param {NS} ns */
 function getCurrentNode(ns) {
-	return `${ns.getResetInfo().currentNode}.${1 + ns.singularity.getOwnedSourceFiles().reduce((a, sf) => sf.n == ns.getResetInfo().currentNode ? sf.lvl : a, 0)}`
+	const r = ns.getResetInfo();
+	return `${r.currentNode}.${1 + r.ownedSF.get(r.currentNode)}`
 }
 
 export function clean(ns) {
@@ -389,7 +391,7 @@ function prettyLogs(ns) {
 			` network - ${util.ramFormat(total_free_ram)}/${util.ramFormat(total_max_ram)}`,
 			` threads - ${ns.formatNumber(Math.floor(total_free_ram / ns.getScriptRam("weaken.js")))}/${ns.formatNumber(Math.floor(total_max_ram / ns.getScriptRam("weaken.js")))} threads`,
 			"",
-			` bought augs x ${bought_augs_sans_nfg}, ${num_other_augs}/100 installed`,
+			` bought augs x ${bought_augs_sans_nfg}, ${num_other_augs}/100 installed, NFG x ${ns.getResetInfo().ownedAugs.get(CNST.NFG)}`,
 			`${aug_info}`,
 			` ${ns.read("temp/installAugsReason.txt")}`,
 		].join("\n"))
@@ -422,7 +424,7 @@ async function prettyOverview(ns, timer) {
 		[`profit:`, `\$${ns.formatNumber(hacknet_info.profit)}`],
 		[bar, bar],
 		[`status:`, `${gang_info?.cycle ?? "~"}`],
-		[`members:`, `${gang_info?.memnum ?? "~"}`],
+		[`members:`, `${gang_info?.size ?? "~"}`],
 		[`power:`, `${ns.formatNumber(gang_info?.power ?? 0, 2)}/${ns.formatNumber(gang_info?.nextpower ?? 0, 2)}`],
 		[`territory:`, `${ns.formatNumber(gang_info?.territory ?? 0 * 100) ?? "~"}%`],
 		[`warfare?:`, `${gang_info?.tw ?? "~"}`],
@@ -568,7 +570,7 @@ export async function installAugs(ns) {
 	const checkTimeout = () => (time_since_last_aug > 1800000 && lowest_price > ns.getServerMoneyAvailable("home")) ? (writeLog(timeout_log)) : false;
 	const hasTRP = () => bought_augs.includes(CNST.TRP) && writeLog("installed The Red Pill");
 	(
-		(hasTRP() && await Run(ns, "singularity.softReset", ["rset.js"])), // if have TRP then install
+		(hasTRP() && await Run(ns, "singularity.softReset", ["rset.js"])), // if have TRP then install asap
 		!await is_Busy(ns) // if not busy
 		&& !!bought_augs.length // and augs available
 		&& (checkTimeout() || checkFavour()) // and (timed out or can hit favour breakpoint)
@@ -743,16 +745,14 @@ export async function availableAugs(ns, s = ns.singularity) {
 
 /** @param {NS} n */
 export async function backdoor(n, s = n.singularity) {
-	const servers = ["CSEC", "avmnite-02h", "run4theh111z", "I.I.I.I",]
-		.filter(server => (
+	["CSEC", "avmnite-02h", "run4theh111z", "I.I.I.I",]
+		.forEach(server => (
 			!n.getServer(server).backdoorInstalled
 			&& n.hasRootAccess(server)
 			&& n.getHackingLevel() > n.getServerRequiredHackingLevel(server)
-		));
-	servers.forEach(server => (
-		!n.getRunningScript("bd.js", "home", server)?.pid
-		&& n.run("bd.js", 1, server)
-	))
+			&& !n.getRunningScript("bd.js", "home", server)?.pid
+			&& n.run("bd.js", 1, server)
+		))
 }
 
 /** @param {NS} ns */
@@ -794,16 +794,12 @@ export function hacknetShindigs(ns, h = ns.hacknet) {
 /** @param {NS} ns */
 export async function steves(ns, s = ns.sleeve, b = ns.bladeburner, g = ns.gang) {
 	const steves = util.getIndexArray(8).sort((a, b) => s.getSleeve(b).storedCycles - s.getSleeve(a).storedCycles); // steves is an array [0..7] sorted by stored idle cycles
-	const check_low_skill = steve => (
-		["strength", "defense", "dexterity", "agility"]
-			.reduce((a, skill) => s.getSleeve(steve).skills[skill] < 25 ? skill : a, false)
-	);
-	const check_BB_infil = () => !steves.map(steve => s.getTask(steve)).some(task => task?.type === "INFILTRATE");
-	const train = steve => (s.travel(steve, "Sector-12"), s.setToGymWorkout(steve, "Powerhouse Gym", check_low_skill(steve)));
-	const go_stabbin = steve => s.setToCommitCrime(steve, "Homicide");
-	const bb_infil = steve => s.setToBladeburnerAction(steve, "Infiltrate synthoids");
+	const get_low_skill = steve => ["strength", "defense", "dexterity", "agility"].reduce((a, skill) => s.getSleeve(steve).skills[skill] < 25 ? skill : a, false);
+	const try_train = steve => get_low_skill(steve) ? (s.travel(steve, "Sector-12"), s.setToGymWorkout(steve, "Powerhouse Gym", get_low_skill(steve))) : false;
+	const try_stabbin = steve => !g.inGang() ? s.setToCommitCrime(steve, "Homicide") : false;
+	const bb_infil = steve => !steves.map(steve => s.getTask(steve)).some(task => task?.type === "INFILTRATE") ? s.setToBladeburnerAction(steve, "Infiltrate synthoids") : false;
 	const bb_contracts = steve => b.getContractNames().some(contract => (
-		!steves.some(steve => s.getTask(steve)?.actionName === contract)
+		steves.every(steve => s.getTask(steve)?.actionName !== contract)
 		&& b.getActionCountRemaining("Contract", contract)
 		&& s.setToBladeburnerAction(steve, "Take on contracts", contract)
 	));
@@ -815,17 +811,14 @@ export async function steves(ns, s = ns.sleeve, b = ns.bladeburner, g = ns.gang)
 	);
 	(
 		steves.forEach(steve => (
-			(s.getSleeve(steve).shock == 0 && buy_augs(steve)),
+			(!s.getSleeve(steve).shock && buy_augs(steve)),
 			s.getSleeve(steve).shock > 90
 				? recover_or_idle(steve)
-				: !!check_low_skill(steve)
-					? train(steve) // train if weak or
-					: !g.inGang()
-						? go_stabbin(steve) // murder for gang or 
-						: check_BB_infil()
-							? bb_infil(steve) // one to bb infil
-							: bb_contracts(steve) // or fill bb contracts,
-							|| recover_or_idle(steve) // or shock recover, or idle
+				: try_train(steve) // train if weak or
+				|| try_stabbin(steve) // murder for gang or 
+				|| bb_infil(steve) // one to bb infil or 
+				|| bb_contracts(steve) // fill bb contracts or
+				|| recover_or_idle(steve) // or shock recovery/idle
 		))
 	)
 }
@@ -835,13 +828,12 @@ export async function bburner(ns, s = ns.singularity, bb = ns.bladeburner) {
 	const upSkill = () => bb.upgradeSkill(bb.getSkillNames().reduce((a, b) => bb.getSkillUpgradeCost(a) < bb.getSkillUpgradeCost(b) ? a : b)) && upSkill();
 	(
 		bb.joinBladeburnerDivision(),
-		bb.inBladeburner() && !await is_Busy(ns)
+		bb.inBladeburner()
 		&& (
 			upSkill(),
-			bb.getBlackOpNames()
-				.filter(op => (([a, b]) => a + b > 1.8)(bb.getActionEstimatedSuccessChance("BlackOps", op)))
-				.forEach(op => (s.stopAction(), bb.startAction("BlackOps", op)))
-
+			((([a, b]) => a + b > 1.8)(bb.getActionEstimatedSuccessChance("BlackOps", bb.getNextBlackOp().name))
+				&& !await is_Busy(ns)
+				&& (s.stopAction(), bb.startAction("BlackOps", bb.getNextBlackOp().name)))
 		)
 	)
 }
@@ -875,28 +867,30 @@ export async function stan(ns, s = ns.stanek) {
 /** @param {NS} ns */
 export async function runGang(n, g = n.gang) {
 	const tryRecruit = (name = CNST.MEMBER_NAMES[Math.floor(Math.random() * CNST.MEMBER_NAMES.length)]) => g.getMemberNames().includes(name) ? tryRecruit() : g.recruitMember(name) && n.tprintf(`${util.ansi.r}Recruited ${util.ansi.g}${name}`);
-	const setTW = () => g.setTerritoryWarfare(!Object.keys(other_gang_info()).some(h => h != CNST.GANG_NAME && g.getChanceToWinClash(h) < .55));
+	const setTW = () => g.setTerritoryWarfare(Object.keys(other_gang_info()).every(h => g.getChanceToWinClash(h) >= .5));
 	const slp = async t => await n.sleep(t / (g.getBonusTime() > 5000 ? 25 : 1));
 	const other_gang_info = g.getOtherGangInformation;
-	const tick = async (q = () => Object.values(other_gang_info()).reduce((a, g) => a + g.power), l = q()) => (await n.sleep(50), l == q() && await tick());
-	const assignJob = (task, focus = g.getMemberNames().length > 10 ? "moneyGain" : "respectGain") => (
+	const tick = async (q = () => Object.values(other_gang_info()).reduce((a, b) => a + b.power), l = q()) => (await n.sleep(50), l == q() && await tick());
+	const focus = g.getMemberNames().length > 10 ? "moneyGain" : "respectGain";
+	const assignJob = task => (
 		g.getMemberNames().forEach(member => (
 			g.getEquipmentNames().forEach((item) => g.purchaseEquipment(member, item)),
-			["agi", "str", "def", "dex"].map(skill => g.getAscensionResult(member)?.[skill]).reduce((a, c) => a + c) > 6 && g.ascendMember(member),
-			g.setMemberTask(member, task ?? g.getTaskNames().map(n => (g.setMemberTask(member, n), { name: n, gain: g.getMemberInformation(member)[focus] })).reduce((a, b) => a.gain > b.gain ? a : b).name)
+			["agi", "str", "def", "dex"].reduce((a, b) => a + g.getAscensionResult(member)?.[b], 0) > 6 && g.ascendMember(member),
+			// g.setMemberTask(member, task ?? g.getTaskNames().map(n => (g.setMemberTask(member, n), { name: n, gain: g.getMemberInformation(member)[focus] })).reduce((a, b) => a.gain > b.gain ? a : b).name),
+			g.setMemberTask(member, task ?? g.getTaskNames().reduce((a, b) => (g.setMemberTask(member, b), gain => gain < a.dat ? a : { name: b, dat: gain })(g.getMemberInformation(member)[focus])).name)
 		)),
 		printToPort(task?.split(" ").map(a => a[0]).join("") ?? "Jobs")
 	);
 	const printToPort = job => (
 		n.clearPort(n.pid),
-		n.writePort(n.pid, JSON.stringify({
+		n.writePort(n.pid, {
 			cycle: job,
-			memnum: g.getMemberNames().length,
+			size: g.getMemberNames().length,
 			power: g.getGangInformation().power,
-			nextpower: Math.max(...Object.values(other_gang_info()).map(g => g.power)),
+			nextpower: Object.values(other_gang_info()).reduce((a, b) => a > b.power ? a : b.power, 0),
 			territory: g.getGangInformation().territory * 100,
 			tw: g.getGangInformation().territoryWarfareEngaged,
-		}))
+		})
 	);
 	(
 		(g.inGang() || g.createGang(CNST.GANG_NAME))
@@ -916,19 +910,18 @@ export async function runGang(n, g = n.gang) {
 
 /** @param {NS} ns */
 export async function golfedGang(n, g = n.gang,
-	m = "Slum Snakes",
 	s = async t => await n.sleep(t / (g.getBonusTime() > 5000 ? 25 : 1)),
-	a = (j, f = g.getMemberNames().length == 12 ? "moneyGain" : "respectGain") =>
-		g.getMemberNames().forEach(m => (
-			g.getEquipmentNames().forEach((i) => g.purchaseEquipment(m, i)),
+	a = j =>
+		g.getMemberNames().map(m => (
+			g.getEquipmentNames().map((i) => g.purchaseEquipment(m, i)),
 			["agi", "str", "def", "dex"].map(k => g.getAscensionResult(m)?.[k]).reduce((a, c) => a + c) > 6 && g.ascendMember(m),
-			g.setMemberTask(m, j ?? g.getTaskNames().map(n => (g.setMemberTask(m, n), { n: n, v: g.getMemberInformation(m)[f] })).reduce((a, b) => a.v > b.v ? a : b).n)
+			g.setMemberTask(m, j ?? g.getTaskNames().reduce((a, b) => (g.setMemberTask(m, b), i => i < a.g ? a : { n: b, g: i })(g.getMemberInformation(m)[g.getMemberNames().length == 12 ? "moneyGain" : "respectGain"])).n)
 		))
 ) {
-	(g.inGang() || g.createGang(m))
+	(g.inGang() || g.createGang("Slum Snakes"))
 		&& (
 			g.recruitMember(Math.random()),
-			g.setTerritoryWarfare(!Object.keys(g.getOtherGangInformation()).some(h => h != m && g.getChanceToWinClash(h) < .55)),
+			g.setTerritoryWarfare(Object.keys(g.getOtherGangInformation()).every(h => g.getChanceToWinClash(h) > .5)),
 			a(),
 			await s(15000),
 			a("Train Combat"),
@@ -947,95 +940,73 @@ export async function prsm(ns) {
 	ns.disableLog('ALL');
 	ns.enableLog('exec');
 	const hack_percentage = 0.01; // decimal percentage to hack
-	const job_delay = 20; // delay between HWGW jobs in ms
-	const batch_delay = job_delay * 5; // delay between batches
-	//	
-	const decideThreads = (available, requested) => available < requested ? available : requested;
-	const getThreadDiff = (total, threads) => total - threads;
-	const dummy_player = await Run(ns, "getPlayer");
-	const getHostRam = (server, spareram = server == "home" ? (ns.getServerMoneyAvailable("home") > 150e9 ? 1000 : 100) : 0) => Math.floor(getFreeRam(ns, server) - spareram);
-	const getAvailableThreads = (script, host_list) => host_list.map(server => Math.floor(getHostRam(server) / ns.getScriptRam(`${script.name}.js`))).reduce((threads, sum) => threads + sum);
+	const job_delay = 5; // delay between HWGW jobs in ms
+	const batch_delay = job_delay * 4; // delay between batches
+	//
+	const write_workers = () => ["hack", "grow", "weaken"].forEach(script => ((!ns.fileExists(script) && ns.write(`${script}.js`, `export const main = async ns => await ns.${script}(ns.args[0], { additionalMsec: ns.args[1] })`, "w")), sGet(ns).forEach(server => ns.scp(`${script}.js`, server))));
+	const getHostRam = server => Math.floor(getFreeRam(ns, server) - (server == "home" ? 100 : 0));
 	const modPlayer = (player, threads, target) => Object.fromEntries(Object.entries(player).map(([key, entry]) => (
 		(key == "exp" && (entry.hacking += ns.formulas.hacking.hackExp(target, player) * threads)),
 		(key == "skills" && (entry.hacking = ns.formulas.skills.calculateSkill(player.exp.hacking, player.mults.hacking))),
 		[key, entry]
 	)));
-	const sendJobs = (object, dummy_player) => (
-		object.threads = decideThreads(object.available, object.needed),
-		object.available = getThreadDiff(object.available, object.threads),
-		object.needed = getThreadDiff(object.needed, object.threads),
-		object.threads > 0 && !!ns.exec(`${object.script.name}.js`, object.host, object.threads, object.target.hostname, object.script.time)
-			? ((object.remaining > 0 && object.needed > 1)
-				? sendJobs(object, modPlayer(dummy_player, object.threads, object), object)
-				: modPlayer(dummy_player, object.threads, object.target))
-			: dummy_player
+	const sendJobs = (b_obj, p_obj) => (
+		b_obj.threads = Math.min(b_obj.available, b_obj.script.jobs),
+		b_obj.available -= b_obj.threads,
+		b_obj.script.jobs -= b_obj.threads,
+		b_obj.threads > 0 && !!ns.exec(`${b_obj.script.name}.js`, b_obj.host, b_obj.threads, b_obj.target.hostname, b_obj.script.time)
+			? ((b_obj.available > 0 && b_obj.script.jobs > 1)
+				? sendJobs(b_obj, modPlayer(p_obj, b_obj.threads, b_obj.target))
+				: modPlayer(p_obj, b_obj.threads, b_obj.target))
+			: p_obj
 	);
-	const runLoop = async (run_dummy_player) => {
-		["hack", "grow", "weaken"].forEach(script => (ns.write(`${script}.js`, `export const main = async ns => await ns.${script}(ns.args[0], { additionalMsec: ns.args[1] })`, "w"), sGet(ns).forEach(server => ns.scp(`${script}.js`, server))));
+
+	async function runLoop(run_p_obj) {
+		write_workers();
 		const host_list = sGet(ns).filter(server => ns.hasRootAccess(server) && server.substring(0, 7) != "hacknet");
-		const target = ns.getServer(sGet(ns).reduce((a, s) => {
+		const getAvailableThreads = script => host_list.reduce((a, server) => a + Math.floor(getHostRam(server) / ns.getScriptRam(`${script.name}.js`)), 0);
+		const target = ns.getServer(host_list.reduce((a, b) => {
 			const rank = s => ns.getServerMaxMoney(s) / ns.getServerMinSecurityLevel(s);
-			return (
-				(
-					s != "home"
-					&& ns.hasRootAccess(s)
-					&& ns.getServerRequiredHackingLevel(s) <= ns.getHackingLevel() / 2
-					&& rank(s) > rank(a)
-					&& s
-				)
-				|| a
-			)
-		}
-		))
-		const hack_time = ns.getHackTime(target.hostname);
-		const raw_hack_jobs = hack_percentage / (ns.formulas.hacking.hackPercent(target, run_dummy_player));
-		const hack_jobs = raw_hack_jobs < 1 || raw_hack_jobs == Infinity ? 1 : raw_hack_jobs;
-		const grow_jobs = ns.growthAnalyze(target.hostname, (1 / (1 - (ns.formulas.hacking.hackPercent(target, run_dummy_player) * hack_jobs))));
-		const hack_sec_jobs = (hack_jobs * 0.04);
-		const grow_sec_jobs = (grow_jobs * 0.08);
-		const wekn_jobs = (target.hackDifficulty - target.minDifficulty) / ns.weakenAnalyze(1);
-		const hwekn_jobs = wekn_jobs + grow_sec_jobs;
-		const gwekn_jobs = wekn_jobs + hack_sec_jobs;
-		const batch_total = hack_jobs + grow_jobs + hwekn_jobs + gwekn_jobs;
-		const whole_jobs_array = [
-			{ name: "weaken", jobs: hwekn_jobs, time: job_delay },
-			{ name: "weaken", jobs: gwekn_jobs, time: job_delay * 3 },
-			{ name: "grow", jobs: grow_jobs, time: job_delay * 2 + (hack_time * 0.8) },
-			{ name: "hack", jobs: hack_jobs, time: 0 + (hack_time * 3) },
+			return (ns.getServerRequiredHackingLevel(b) <= ns.getHackingLevel() / 2 && rank(a) > rank(b) ? a : b);
+		}));
+		const clamp = n => n < 1 || n == Infinity ? 1 : n;
+		const hack_jobs = clamp(hack_percentage / (ns.formulas.hacking.hackPercent(target, run_p_obj)));
+		const grow_jobs = 1 + ns.growthAnalyze(target.hostname, (1 / (1 - (ns.formulas.hacking.hackPercent(target, run_p_obj) * hack_jobs))));
+		const sec_jobs = (target.hackDifficulty - target.minDifficulty) / ns.weakenAnalyze(1);
+		const wekn_jobs = sec_jobs + (hack_jobs * 0.04) + (grow_jobs * 0.08);
+		const batch_total = hack_jobs + grow_jobs + wekn_jobs;
+		const squish = (script, jobs) => Math.floor(batch_total > getAvailableThreads(script, host_list) // If the batch can't be run in available ram, shrink it to fit
+			? jobs * (getAvailableThreads(script, host_list) / batch_total)
+			: jobs)
+		const jobs_array = [
+			{ name: "weaken", jobs: squish("weaken", wekn_jobs), time: job_delay * 2 },
+			{ name: "grow", jobs: squish("grow", grow_jobs), time: job_delay + (ns.getHackTime(target.hostname) * 0.8) },
+			{ name: "hack", jobs: squish("hack", hack_jobs), time: 0 + (ns.getHackTime(target.hostname) * 3) },
 		];
-		const jobs_array = (
-			target.moneyAvailable / target.moneyMax < 0.9
-			|| target.hackDifficulty > target.minDifficulty + 3
-		)
-			? whole_jobs_array.slice(1, 3) // gw to prep
-			: whole_jobs_array;
-		const mod_run_dummy_player = jobs_array.flatMap(script =>
-			host_list.map(host => // Iterate through hosts and fill each one with jobs until done
+
+		//ns.tprint(jobs_array)
+		const batch_complete_p_obj = jobs_array.reduce((_, script) =>
+			host_list.reduce((_, host) => // Iterate through hosts and fill each one with jobs until done
 				sendJobs(
 					{
-						needed: Math.floor(
-							batch_total > getAvailableThreads(script, host_list)
-								? script.jobs * (getAvailableThreads(script, host_list) / batch_total)
-								: script.jobs
-						), // If the batch can't be run in available ram, shrink it to fit
 						available: Math.floor(getHostRam(host) / ns.getScriptRam(`${script.name}.js`)),
 						script: script,
 						host: host,
 						target: target
 					},
-					dummy_player,
+					run_p_obj,
 				)
-			)
-		).pop();
+				, {}), {}
+		);
 		(
 			ns.clearPort(ns.pid),
-			ns.writePort(ns.pid, JSON.stringify(target.hostname)),
+			ns.writePort(ns.pid, target.hostname),
 			await util.slp(batch_delay),
-			await runLoop(mod_run_dummy_player)
+			await runLoop(batch_complete_p_obj)
 		)
 	};
 	(
-		await runLoop(dummy_player)
+		await runLoop(await Run(ns, "getPlayer"))
 	)
 }
 
