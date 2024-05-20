@@ -1,4 +1,4 @@
-// lib.js
+// iib.js
 export const CNST = {
 	NFG: "NeuroFlux Governor",
 	TRP: "The Red Pill",
@@ -107,7 +107,6 @@ export const CNST = {
 	],
 	LOOP_FUNCTIONS: ["stan", "runGang", "prsm"],
 	ONESHOT_FUNCTIONS: [
-		"clean",
 		"darkwebShopping",
 		"ownedAugs",
 		"availableAugs",
@@ -122,11 +121,9 @@ export const CNST = {
 		"buyTOR",
 		"backdoor",
 		"graft",
-		//"stonks",
 		"donate",
 		"buyAugs",
 		"installAugs",
-		"cityAugs",
 		"persuade",
 		"steves",
 		"bburner",
@@ -139,16 +136,7 @@ export const CNST = {
 	HOOK1: eval("document").getElementById('overview-extra-hook-1'),
 };
 
-
-async function jankAcceptGift(ns) {
-	if (ns.stanek.acceptGift()) return;
-	if (ns.getPlayer().city != "Chongqing") { ns.singularity.travelToCity("Chongqing"); }
-	ns.singularity.goToLocation("Church of the Machine God");
-	await ns.sleep(1);
-	for (const elem of eval('document').getElementsByTagName("button")) {
-		if (elem.outerText == "Accept Stanek's Gift") elem.click();
-	}
-}
+// Main running funcs
 
 export function main(n) {
 	(
@@ -157,6 +145,38 @@ export function main(n) {
 		!n.args.length && (writeLaunchers(n), n.run("gvnr.js"))
 	)
 };
+
+/** @param {NS} ns */
+export function writeLaunchers(ns) {
+	const writeFile = (type, func) => {
+		ns.write(`${type}/${func}.js`, `import { ${func} } from "lib.js"; export const main = async ns => (ns.atExit(() => (ns.clearPort(ns.pid),ns.writePort(ns.pid, ""))), await ${func}(ns,ns.args[0]));`, "w");
+	}
+	(
+		["oneshot", "loop"].forEach(dir => ns.ls("home", dir).forEach(s => ns.rm(s))),
+		CNST.STANDALONE_FUNCTIONS.forEach(func => writeFile("", func)),
+		CNST.LOOP_FUNCTIONS.forEach(func => writeFile("loop", func)),
+		CNST.ONESHOT_FUNCTIONS.forEach(func => writeFile("oneshot", func))
+	)
+}
+
+/** @param {NS} ns */
+export async function gvnr(ns) {
+	const refresh_delay = 1;
+	const runLoop = async (is_first_start, timer) => (
+		prettyLogs(ns),
+		await prettyOverview(ns, timer),
+		timer % 40 == 0 && await runScripts(ns, is_first_start),
+		await util.slp(refresh_delay * 1000),
+		await runLoop(false, timer + refresh_delay)
+	);
+	(
+		ns.tail(),
+		ns.disableLog('ALL'),
+		ns.tprintf(`${util.ansi.m}** ./gvnr.js **`),
+		ns.atExit(() => (CNST.HOOK0.innerText = "", CNST.HOOK1.innerText = "")), // Clears the overview on exit to prevent stale data)
+		await runLoop(true, 0)
+	)
+}
 
 /**
  * @param {NS} ns The ns object
@@ -182,6 +202,10 @@ export async function Run(ns, path, params = [], props = "") {
 		? (ns.tprintf(`${util.ansi.r}!! ${path} DID NOT RUN !!`), null)
 		: (await ns.nextPortWrite(run_pid), ns.readPort(run_pid));
 };
+
+// 
+//
+//
 
 export const util = {
 
@@ -236,16 +260,13 @@ export const util = {
 
 	getIndexArray: n => [...Array(n).keys()],
 
-	tickString: (t, l = 30, e = true) => t % l ? '#'.repeat(t / 5 % (l / 5)) + ` |/-\\`[t % 5] : "#exec#",
+	tickString: (t, l = 40, e = true) => t % l ? '#'.repeat(t / 4 % (l / 4)) + `|/-\\`[t % 4] : "#--exec--#",
 
 	digiClock: (r = Date.now(), c = (t, d = 60, v = r / t % d | 0) => v <= 9 ? "0" + v : v) => (r < 864e5 ? "" : c(864e5, 1 / 0) + "-") + c(36e5, 24) + ":" + c(6e4) + ":" + c(1e3),
 
 	ramFormat: ram => (ram < 1e3) ? ram.toFixed(2) + "GB" : (ram < 1e6) ? (ram / 1e3).toFixed(2) + "TB" : (ram / 1e6).toFixed(2) + "PB",
 
 	slp: async t => await new Promise(r => setTimeout(r, t)),
-}
-export function test(ns) {
-
 }
 
 function getFreeRam(ns, server) {
@@ -278,10 +299,6 @@ function peekyPorty(ns, script) {
 function getCurrentNode(ns) {
 	const r = ns.getResetInfo();
 	return `${r.currentNode}.${1 + r.ownedSF.get(r.currentNode)}`
-}
-
-export function clean(ns) {
-	ns.ls("home", "run/").forEach(s => ns.rm(s))
 }
 
 export async function buyTOR(ns) {
@@ -332,17 +349,14 @@ export function pServ(ns) {
 	(
 		(
 			ns.purchaseServer("#", 8)
-			|| sGet(ns).some(s => [...Array(21).keys()].map(n => n << 1).some(r => ns.upgradePurchasedServer(s, r)))
+			|| sGet(ns).some(s => [...Array(21).keys()].some(r => ns.upgradePurchasedServer(s, r << 1)))
 		)
 		&& pServ(ns)
 	)
 }
 
+/** @param {NS} ns */
 function prettyLogs(ns) {
-	const getCash = ns.getServerMoneyAvailable;
-	const getMaxMoney = ns.getServerMaxMoney;
-	const getSecLvl = ns.getServerSecurityLevel;
-	const getSecMin = ns.getServerMinSecurityLevel;
 	const percColour = perc => (
 		`${(perc < 33
 			? util.ansi.r
@@ -359,8 +373,8 @@ function prettyLogs(ns) {
 	);
 	const main_list = sGet(ns);
 	const access_list = main_list.filter(s => ns.hasRootAccess(s) && ns.getServerRequiredHackingLevel(s) <= ns.getHackingLevel());
-	const funded_list = access_list.filter(getMaxMoney);
-	const funded_count = main_list.reduce((a, s) => a + !!getMaxMoney(s), 0);
+	const funded_list = access_list.filter(ns.getServerMaxMoney);
+	const funded_count = main_list.reduce((a, s) => a + !!ns.getServerMaxMoney(s), 0);
 	const total_max_ram = access_list.reduce((a, s) => a + ns.getServerMaxRam(s), 0);
 	const total_free_ram = access_list.reduce((a, s) => a + getFreeRam(ns, s), 0);
 	const bought_augs = readyFiley(ns, "temp/boughtAugs.txt");
@@ -368,33 +382,35 @@ function prettyLogs(ns) {
 	const num_nfg = bought_augs.reduce((acc, aug) => acc + (aug == CNST.NFG), 0);
 	const num_other_augs = readyFiley(ns, "temp/installedAugs.txt").reduce((acc, aug) => acc + (aug != CNST.NFG), 0);
 	const aug_info = bought_augs.filter(a => a != CNST.NFG).map(aug => ` ·${aug}`).concat(num_nfg ? [(` ·NeuroFlux Governor x${num_nfg}\n`)] : null).join("\n");
-	const printLogLine = line => ns.print(" " + line.join(" | "));
+
+	const getSecLvl = server => Math.ceil(ns.getServerSecurityLevel(server)).toString().padStart(3, " ");
+	const getSecDelta = server => secColour(Math.ceil((ns.getServerSecurityLevel(server) - ns.getServerMinSecurityLevel(server))).toString().padStart(3, " "));
+	const getCash = server => ns.formatNumber(ns.getServerMoneyAvailable(server)).toString().padStart(8, " ");
+	const getMaxCash = server => ns.formatNumber(ns.getServerMaxMoney(server)).toString().padStart(8, " ");
+	const getPerc = server => percColour((ns.getServerMoneyAvailable(server) / ns.getServerMaxMoney(server) * 100).toFixed(2));
+	const getExecTime = server => util.digiClock(ns.getWeakenTime(server));
+	const getServerName = server => server == peekyPorty(ns, "loop/prsm.js") ? `${server} ${util.ansi.w}---${util.ansi.y}Δ<` : server;
+	const getInfo = s => [getSecLvl(s), getSecDelta(s), getCash(s), getMaxCash(s), getPerc(s), getExecTime(s), getServerName(s)]
+	const format = line => ` ${line.join(" | ")}`;
 	(
 		ns.resizeTail(800, 1000),
 		ns.moveTail(CNST.WIN.innerWidth - 1150, 0),
 		ns.clearLog(),
 		[
-			...funded_list.map(server => [
-				Math.ceil(getSecLvl(server)).toString().padStart(3, " "),
-				secColour(Math.floor(getSecLvl(server) - getSecMin(server))),
-				ns.formatNumber(getCash(server)).toString().padStart(8, " "),
-				ns.formatNumber(getMaxMoney(server)).toString().padStart(8, " "),
-				percColour((getCash(server) / getMaxMoney(server) * 100).toFixed(2)),
-				util.digiClock(ns.getWeakenTime(server)),
-				server == peekyPorty(ns, "loop/prsm.js") ? `${server} ${util.ansi.w}---${util.ansi.y}Δ<` : server
-			]),
-			["sec", " Δ ", "  \$cur  ", "  \$max  ", "   %   ", "  ~ete  ", ` Target ~ ${funded_list.length}/${funded_count}`],
-		].forEach(printLogLine),
-		ns.print([
-			"",
+			...[...funded_list.map(getInfo), ["sec", " Δ ", "  \$cur  ", "  \$max  ", "   %   ", "  ~ete  ", ` Target ~ ${funded_list.length}/${funded_count}`]].map(format),
+			`\n`,
 			` home - ${util.ramFormat(getFreeRam(ns, "home"))}/${util.ramFormat(ns.getServerMaxRam("home"))}`,
 			` network - ${util.ramFormat(total_free_ram)}/${util.ramFormat(total_max_ram)}`,
 			` threads - ${ns.formatNumber(Math.floor(total_free_ram / ns.getScriptRam("weaken.js")))}/${ns.formatNumber(Math.floor(total_max_ram / ns.getScriptRam("weaken.js")))} threads`,
-			"",
+			`\n`,
 			` bought augs x ${bought_augs_sans_nfg}, ${num_other_augs}/100 installed, NFG x ${ns.getResetInfo().ownedAugs.get(CNST.NFG)}`,
 			`${aug_info}`,
 			` ${ns.read("temp/installAugsReason.txt")}`,
-		].join("\n"))
+			`\n`,
+			` available ass: ${ns.bladeburner.inBladeburner() ? ns.formatNumber(ns.bladeburner.getActionCountRemaining("Operations", "Assassination")) : "not in BB"}`
+		].forEach(l => ns.print(l)),
+
+		[...Array(8).keys()].sort((a, b) => ns.sleeve.getSleeve(b).storedCycles - ns.sleeve.getSleeve(a).storedCycles).map(s => " steve " + s + " : " + ns.sleeve.getSleeve(s).storedCycles + " cycles stored").forEach(l => ns.print(l))
 	)
 };
 
@@ -406,38 +422,50 @@ async function prettyOverview(ns, timer) {
 	const date = Number(new Date());
 	const last_aug_time = Number(ns.read("temp/lastAugTime.txt")) || date;
 	const overview_array = [
-		[`bitnode:`, `${getCurrentNode(ns)}`],
-		[`pserv:`, `${sGet(ns).filter(s => s.startsWith("#")).length}/${ns.getPurchasedServerLimit()}`],
-		[`w_d lvl:`, `${Math.round(3000 * await Run(ns, "getBitNodeMultipliers", [], "WorldDaemonDifficulty"))}`],
-		[`city:`, `${ns.getPlayer().city}`],
-		[`karma:`, `${ns.formatNumber(ns.heart.break())}`],
-		[bar, bar],
-		[`target:`, `${prsm_target}`],
-		[`\$/s:`, `\$${ns.formatNumber(ns.getScriptIncome("loop/prsm.js"))}`],
-		[`\$ total:`, `${ns.formatNumber(ns.getMoneySources().sinceInstall.hacking)}`],
-		[`xp/s:`, `${ns.formatNumber(ns.getTotalScriptExpGain())}`],
-		[`scripts:`, `${sGet(ns).reduce((a, b) => a + ns.ps(b).length, 0)}`],
-		[bar, bar],
-		[`hN Servers:`, `${hacknet_info.num}`],
-		[`hashes/Max:`, `${hacknet_info.hashes}`],
-		[`hashes/s:`, `${ns.formatNumber(hacknet_info.prod)}`],
-		[`profit:`, `\$${ns.formatNumber(hacknet_info.profit)}`],
-		[bar, bar],
-		[`status:`, `${gang_info?.cycle ?? "~"}`],
-		[`members:`, `${gang_info?.size ?? "~"}`],
-		[`power:`, `${ns.formatNumber(gang_info?.power ?? 0, 2)}/${ns.formatNumber(gang_info?.nextpower ?? 0, 2)}`],
-		[`territory:`, `${ns.formatNumber(gang_info?.territory ?? 0 * 100) ?? "~"}%`],
-		[`warfare?:`, `${gang_info?.tw ?? "~"}`],
-		[`profit:`, `\$${ns.formatNumber(ns.getMoneySources().sinceStart.gang ?? 0)}`],
-		[bar, bar],
-		[`${util.tickString(timer)}`, `cycle #${Math.floor(timer / 30)}`],
-		[`gvnr uptime:`, `${util.digiClock(timer * 1000)}`],
-		[`t+ Augbuy:`, `${!!(date - last_aug_time) ? util.digiClock(date - last_aug_time) : "N/A"}`],
-		[`t+ Install:`, `${util.digiClock(date - ns.getResetInfo().lastAugReset)}`],
-		[`t+ Bitnode:`, `${util.digiClock(date - ns.getResetInfo().lastNodeReset)}`]];
+		...[
+			[`bitnode:`, `${getCurrentNode(ns)}`],
+			[`pserv:`, `${sGet(ns).filter(s => s.startsWith("#")).length}/${ns.getPurchasedServerLimit()}`],
+			[`w_d lvl:`, `${Math.round(3000 * await Run(ns, "getBitNodeMultipliers", [], "WorldDaemonDifficulty"))}`],
+			[`city:`, `${ns.getPlayer().city}`],
+			[`karma:`, `${ns.formatNumber(ns.heart.break())}`],
+		]
+			.map(a => a.map(e => `<span style="color:cyan">${e}</span>`)),
+		...[
+			[`target:`, `${prsm_target}`],
+			[`\$/s:`, `\$${ns.formatNumber(ns.getScriptIncome("loop/prsm.js"))}`],
+			[`\$ total:`, `${ns.formatNumber(ns.getMoneySources().sinceInstall.hacking)}`],
+			[`xp/s:`, `${ns.formatNumber(ns.getTotalScriptExpGain())}`],
+			[`scripts:`, `${sGet(ns).reduce((a, b) => a + ns.ps(b).length, 0)}`],
+		]
+			.map(a => a.map(e => `<span style="color:red">${e}</span>`)),
+		...[
+			[`hN Servers:`, `${hacknet_info.num}`],
+			[`hashes/Max:`, `${hacknet_info.hashes}`],
+			[`hashes/s:`, `${ns.formatNumber(hacknet_info.prod)}`],
+			[`profit:`, `\$${ns.formatNumber(hacknet_info.profit)}`],
+		]
+			.map(a => a.map(e => `<span style="color:orange">${e}</span>`)),
+		...[
+			[`status:`, `${gang_info?.cycle ?? "~"}`],
+			[`members:`, `${gang_info?.size ?? "~"}`],
+			[`power:`, `${ns.formatNumber(gang_info?.power ?? 0, 2)}/${ns.formatNumber(gang_info?.nextpower ?? 0, 2)}`],
+			[`territory:`, `${ns.formatNumber(gang_info?.territory ?? 0 * 100) ?? "~"}%`],
+			[`warfare?:`, `${gang_info?.tw ?? "~"}`],
+			[`profit:`, `\$${ns.formatNumber(ns.getMoneySources().sinceStart.gang ?? 0)}`],
+		]
+			.map(a => a.map(e => `<span style="color:magenta">${e}</span>`)),
+		...[
+			[`${util.tickString(timer)}`, `cycle #${Math.floor(timer / 30)}`],
+			[`gvnr uptime:`, `${util.digiClock(timer * 1000)}`],
+			[`t+ Augbuy:`, `${!!(date - last_aug_time) ? util.digiClock(date - last_aug_time) : "N/A"}`],
+			[`t+ Install:`, `${util.digiClock(date - ns.getResetInfo().lastAugReset)}`],
+			[`t+ Bitnode:`, `${util.digiClock(date - ns.getResetInfo().lastNodeReset)}`]
+		]
+			.map(a => a.map(e => `<span style="color:yellow">${e}</span>`))
+	];
 	(
-		CNST.HOOK0.innerText = overview_array.reduce((a, l) => `${a}\n${l[0]}`, ""),
-		CNST.HOOK1.innerText = overview_array.reduce((a, l) => `${a}\n${l[1]}`, "")
+		CNST.HOOK0.innerHTML = overview_array.reduce((a, l) => `${a}</br>${l[0]}`, ""),
+		CNST.HOOK1.innerHTML = overview_array.reduce((a, l) => `${a}</br>${l[1]}`, "")
 	)
 };
 
@@ -468,37 +496,6 @@ async function runScripts(ns, is_first_start) {
 		)
 	)
 }
-
-/** @param {NS} ns */
-export async function gvnr(ns) {
-	const refresh_delay = 1;
-	const runLoop = async (is_first_start, timer) => (
-		prettyLogs(ns),
-		await prettyOverview(ns, timer),
-		timer % 30 == 0 && await runScripts(ns, is_first_start),
-		await util.slp(refresh_delay * 1000),
-		await runLoop(false, timer + refresh_delay)
-	);
-	(
-		ns.tail(),
-		ns.disableLog('ALL'),
-		ns.tprintf(`${util.ansi.m}** ./gvnr.js **`),
-		ns.atExit(() => (CNST.HOOK0.innerText = "", CNST.HOOK1.innerText = "")), // Clears the overview on exit to prevent stale data)
-		await runLoop(true, 0)
-	)
-}
-
-/** @param {NS} ns */
-export function writeLaunchers(ns) {
-	const writeFile = (type, func) => ns.write(`${type}/${func}.js`, `import { ${func} } from "lib.js"; export const main = async ns =>(await ${func}(ns,ns.args[0]), ns.atExit(() => (ns.clearPort(ns.pid),ns.writePort(ns.pid, ""))));`, "w");
-	(
-		["oneshot", "loop"].forEach(dir => ns.ls("home", dir).forEach(s => ns.rm(s))),
-		CNST.STANDALONE_FUNCTIONS.forEach(func => writeFile("", func)),
-		CNST.LOOP_FUNCTIONS.forEach(func => writeFile("loop", func)),
-		CNST.ONESHOT_FUNCTIONS.forEach(func => writeFile("oneshot", func))
-	)
-}
-
 export async function graft(ns, g = ns.grafting) {
 	!await is_Busy(ns) && ns.singularity.travelToCity("New Tokyo") &&
 		[
@@ -514,19 +511,20 @@ export async function graft(ns, g = ns.grafting) {
 /** @param {NS} ns */
 export async function factWork(ns, s = ns.singularity) {
 	const available_augs = JSON.parse(ns.read("temp/availableAugs.txt"));
-	const target_faction = available_augs.reduce((a, aug) => (
-		!available_augs.includes(CNST.TRP)
-		&& aug.fact.name != CNST.GANG_NAME
-		&& aug.repdelta > a.repdelta)
-		? aug
-		: a, { fact: { name: "Daedalus" }, repdelta: 0 }
-	).fact.name;
+	const target_faction = available_augs.reduce((a, b) =>
+		(
+			b.fact.name != CNST.GANG_NAME
+			&& b.repdelta > a.repdelta
+		)
+			? b
+			: a
+		, { repdelta: 0 }).fact?.name;
 	(
 		!await is_Busy(ns)
 		&& !!target_faction
 		&& (
 			s.stopAction(),
-			["field", "security", "hacking"].some(job => s.workForFaction(target_faction, job, 0))
+			["field", "security", "hacking"].some(job => s.workForFaction(available_augs.includes(CNST.TRP) ? "Daedalus" : target_faction, job, 0))
 		)
 	)
 }
@@ -572,7 +570,7 @@ export async function installAugs(ns) {
 	(
 		(hasTRP() && await Run(ns, "singularity.softReset", ["rset.js"])), // if have TRP then install asap
 		!await is_Busy(ns) // if not busy
-		&& !!bought_augs.length // and augs available
+		&& !!bought_augs.length // and augs to install
 		&& (checkTimeout() || checkFavour()) // and (timed out or can hit favour breakpoint)
 		&& ( // then install
 			ns.write("temp/installCounter.txt", 1 + +ns.read("temp/installCounter.txt"), "w"),
@@ -593,100 +591,6 @@ export function buyAugs(ns, s = ns.singularity) {
 		ns.getPlayer().factions.forEach(f => f != CNST.GANG_NAME && s.purchaseAugmentation(f, CNST.NFG) && (timeStamp(), termPrintNFG(f))),
 		availableAugs.forEach(aug => (s.purchaseAugmentation(aug.fact.name, aug.aug)) && (timeStamp(), termPrint(aug))),
 		odd_factions.forEach(fac => s.getAugmentationsFromFaction(fac).forEach(aug => s.purchaseAugmentation(fac, aug)))
-	)
-}
-
-/** @param {NS} ns */
-export async function cityAugs(ns, s = ns.singularity, skill = ns.getPlayer().skills) {
-	const companies = {
-		ck: "Clarke Incorporated",
-		ba: "Bachman & Associates",
-		bi: "Blade Industries",
-		ki: "KuaiGong International",
-		oi: "OmniTek Incorporated",
-		nw: "NWO",
-		mc: "MegaCorp",
-		ft: "Fulcrum Technologies",
-		ec: "ECorp",
-	};
-	const cities = {
-		st: "Sector-12",
-		is: "Ishima",
-		nt: "New Tokyo",
-		cq: "Chongqing",
-		av: "Aevum",
-		vh: "Volhaven",
-	};
-	const grindStats = () => (
-		s.stopAction(),
-		s.workForFaction("The Black Hand", "field", 0),
-		ns.write("temp/workReport.txt", "Grinding stats", "w")
-	);
-	const grindChar = () => (
-		s.travelToCity("Volhaven"),
-		s.stopAction(),
-		s.universityCourse("ZB Institute of Technology", "leadership", 0)
-	);
-	const workFor = company => (
-		s.stopAction(),
-		s.workForCompany(company, false),
-		ns.write("temp/workReport.txt", `Working at ${company}`, "w")
-	);
-	const needAug = aug => !JSON.parse(ns.read("temp/ownedAugs.txt")).includes(aug);
-
-	// behold 
-	(
-		!await is_Busy(ns) &&
-		(needAug("NutriGen Implant")
-			? s.travelToCity(cities.nt)
-			: needAug("INFRARET Enhancement")
-				? s.travelToCity(cities.is)
-				: needAug("Social Negotiation Assistant (S.N.A)")
-					? s.travelToCity(cities.nt)
-					: needAug("DermaForce Particle Barrier")
-						? s.travelToCity(cities.vh)
-						: needAug("BrachiBlades")
-							? s.travelToCity(cities.av)
-							: needAug("CashRoot Starter Kit")
-								? s.travelToCity(cities.st)
-								: needAug("Neuregen Gene Modification")
-									? s.travelToCity(cities.cq)
-									: needAug("Neuroreceptor Management Implant")
-										? s.travelToCity(cities.nt)
-										: needAug("PCMatrix")
-											? s.travelToCity(cities.av)
-											: needAug("Graphene Bionic Arms Upgrade")
-												? s.travelToCity(cities.cq)
-												: Math.min(skill.strength, skill.defense, skill.dexterity, skill.agility) < 1200
-													? grindStats()
-													: skill.charisma < 250
-														? grindChar()
-														: (Object.values(companies).forEach(c => c == "Fulcrum Technologies"
-															? s.applyToCompany(c, "IT")
-															: s.applyToCompany(c, "security")),
-															(needAug("Neuronal Densification")
-																? workFor(companies.ck)
-																: needAug("nextSENS Gene Modification")
-																	? workFor(companies.ck)
-																	: needAug("SmartJaw")
-																		? workFor(companies.ba)
-																		: needAug("Neotra")
-																			? workFor(companies.bi)
-																			: needAug("Photosynthetic Cells")
-																				? workFor(companies.ki)
-																				: needAug("OmniTek InfoLoad")
-																					? workFor(companies.oi)
-																					: needAug("Xanipher")
-																						? workFor(companies.nw)
-																						: needAug("Hydroflame Left Arm")
-																							? workFor(companies.nw)
-																							: needAug("CordiARC Fusion Reactor")
-																								? workFor(companies.mc)
-																								: needAug("PC Direct-Neural Interface NeuroNet Injector")
-																									? workFor(companies.ft)
-																									: needAug("ECorp HVMind Implant")
-																										? workFor(companies.ec)
-																										: grindStats())))
 	)
 }
 
@@ -727,7 +631,7 @@ export async function availableAugs(ns, s = ns.singularity) {
 
 	const aug_object = ns.getPlayer().factions
 		.filter(faction => !forbidden_factions.includes(faction))
-		.flatMap(faction => s.getAugmentationsFromFaction(faction).filter(aug => CNST.AUGS_TO_BUY.includes(aug) && !owned_augs.includes(aug))
+		.flatMap(faction => s.getAugmentationsFromFaction(faction).filter(aug => /*CNST.AUGS_TO_BUY.includes(aug) &&*/ !owned_augs.includes(aug))
 			.map(augment => ({
 				aug: augment,
 				price: s.getAugmentationPrice(augment),
@@ -740,12 +644,12 @@ export async function availableAugs(ns, s = ns.singularity) {
 				},
 			}))
 		);
-	ns.write("temp/availableAugs.txt", JSON.stringify(aug_object), "w");
+	ns.write("temp/availableAugs.txt", JSON.stringify(aug_object ?? []), "w");
 }
 
 /** @param {NS} n */
 export async function backdoor(n, s = n.singularity) {
-	["CSEC", "avmnite-02h", "run4theh111z", "I.I.I.I",]
+	["CSEC", "avmnite-02h", "run4theh111z", "I.I.I.I"]
 		.forEach(server => (
 			!n.getServer(server).backdoorInstalled
 			&& n.hasRootAccess(server)
@@ -759,13 +663,13 @@ export async function backdoor(n, s = n.singularity) {
 export function hacknetShindigs(ns, h = ns.hacknet) {
 	const node_array = util.getIndexArray(h.numNodes());
 	const profits = ns.getMoneySources().sinceInstall.hacknet + ns.getMoneySources().sinceInstall.hacknet_expenses;
-	const moneyobj = sGet(ns).map(server => ({
+	const server_obj = sGet(ns).map(server => ({
 		name: server,
 		money: ns.getServerMaxMoney(server),
 		sec: ns.getServerMinSecurityLevel(server),
 	}));
-	const moneytargetserver = moneyobj.reduce((a, b) => a.money < b.money ? a : b).name;
-	const sectargetserver = moneyobj.reduce((a, b) => a.sec > b.sec ? a : b).name;
+	const moneytargetserver = server_obj.reduce((a, b) => a.money < b.money ? a : b).name;
+	const sectargetserver = server_obj.reduce((a, b) => a.sec > b.sec ? a : b).name;
 	const info = {
 		num: h.numNodes(),
 		hashes: `${ns.formatNumber(h.numHashes())}/${ns.formatNumber(h.hashCapacity(), 0)}`,
@@ -782,7 +686,7 @@ export function hacknetShindigs(ns, h = ns.hacknet) {
 		&& h.spendHashes("Reduce Minimum Security", sectargetserver)
 		&& downSec()
 	);
-	const nodeBuy = () => !!(h.purchaseNode() + 1) && nodeBuy();
+	const nodeBuy = () => h.purchaseNode() + 1 && nodeBuy();
 	const upParts = () => ["Level", "Core", "Ram", "Cache"].forEach(part => node_array.forEach(n => h[`upgrade${part}`](n) && upParts()));
 	(
 		profits > -1
@@ -797,19 +701,20 @@ export async function steves(ns, s = ns.sleeve, b = ns.bladeburner, g = ns.gang)
 	const get_low_skill = steve => ["strength", "defense", "dexterity", "agility"].reduce((a, skill) => s.getSleeve(steve).skills[skill] < 25 ? skill : a, false);
 	const try_train = steve => get_low_skill(steve) ? (s.travel(steve, "Sector-12"), s.setToGymWorkout(steve, "Powerhouse Gym", get_low_skill(steve))) : false;
 	const try_stabbin = steve => !g.inGang() ? s.setToCommitCrime(steve, "Homicide") : false;
-	const bb_infil = steve => !steves.map(steve => s.getTask(steve)).some(task => task?.type === "INFILTRATE") ? s.setToBladeburnerAction(steve, "Infiltrate synthoids") : false;
-	const bb_contracts = steve => b.getContractNames().some(contract => (
+	const bb_infil = steve => b.inBladeburner() && !steves.map(steve => s.getTask(steve)).some(task => task?.type === "INFILTRATE") ? s.setToBladeburnerAction(steve, "Infiltrate synthoids") : false;
+	const bb_contracts = steve => b.inBladeburner() && b.getContractNames().some(contract => (
 		steves.every(steve => s.getTask(steve)?.actionName !== contract)
 		&& b.getActionCountRemaining("Contract", contract)
 		&& s.setToBladeburnerAction(steve, "Take on contracts", contract)
 	));
-	const recover_or_idle = (steve) => !!s.getSleeve(steve).shock ? s.setToShockRecovery(steve) : s.setToIdle(steve);
+	const recover_or_idle = (steve) => s.getSleeve(steve).shock ? s.setToShockRecovery(steve) : s.setToIdle(steve);
 	const buy_augs = steve => (
 		s.getSleevePurchasableAugs(steve)
 			.sort((a, b) => a.cost - b.cost)
 			.forEach(aug => s.purchaseSleeveAug(steve, aug.name))
 	);
 	(
+		steves.forEach(steve => s.setToIdle(steve)),
 		steves.forEach(steve => (
 			(!s.getSleeve(steve).shock && buy_augs(steve)),
 			s.getSleeve(steve).shock > 90
@@ -825,34 +730,47 @@ export async function steves(ns, s = ns.sleeve, b = ns.bladeburner, g = ns.gang)
 
 /** @param {NS} ns */
 export async function bburner(ns, s = ns.singularity, bb = ns.bladeburner) {
+	const goTrain = async () => (
+		await Run(ns, "singularity.stopAction"),
+		await Run(ns, "singularity.travelToCity", ["Sector-12"]),
+		await Run(ns, "singularity.gymWorkout", [
+			"Powerhouse Gym",
+			["Defense", "Strength", "Dexterity", "Agility"].reduce((a, b) => {
+				const getSkill = s => ns.getPlayer().skills[s.toLowerCase()];
+				return getSkill(a) < getSkill(b) ? a : b
+			}),
+			0
+		])
+	);
 	const upSkill = () => bb.upgradeSkill(bb.getSkillNames().reduce((a, b) => bb.getSkillUpgradeCost(a) < bb.getSkillUpgradeCost(b) ? a : b)) && upSkill();
+	const doOp = async op => op
+		? ((([a, b]) => a + b > 1.8)(bb.getActionEstimatedSuccessChance("BlackOps", bb.getNextBlackOp().name))
+			&& !await is_Busy(ns)
+			&& (s.stopAction(), bb.startAction("BlackOps", bb.getNextBlackOp().name)))
+		: null; //d43m0nD357r0y(ns);
+
 	(
 		bb.joinBladeburnerDivision(),
-		bb.inBladeburner()
-		&& (
-			upSkill(),
-			((([a, b]) => a + b > 1.8)(bb.getActionEstimatedSuccessChance("BlackOps", bb.getNextBlackOp().name))
-				&& !await is_Busy(ns)
-				&& (s.stopAction(), bb.startAction("BlackOps", bb.getNextBlackOp().name)))
-		)
+		!bb.inBladeburner()
+			? await goTrain()
+			: (
+				//upSkill(),
+				await doOp(bb.getNextBlackOp()?.name)
+			)
 	)
 }
 
 /** @param {NS} ns */
 export async function stan(ns, s = ns.stanek) {
+	await ns.sleep(1000) // short sleep to let prsm allocate properly on restart
 	ns.disableLog("ALL"),
 		ns.enableLog("exec"),
 		ns.run("lsg.js");
-	await jankAcceptGift(ns);
 	s.acceptGift() || (await ns.sleep(1000), await stan(ns));
-	const frags = JSON.parse(ns.read("stfr.js") || "0");
 	const spare_threads = Math.floor((getFreeRam(ns, "home") - 50) / ns.getScriptRam("chrg.js"));
-	const target = util.getIndexArray(s.giftWidth())
-		.flatMap(x => util.getIndexArray(s.giftHeight())
-			.map(y => s.getFragment(x, y)))
-		.reduce((a, b) => !!b && b.id < 100 && b.numCharge < a.numCharge ? b : a, { numCharge: Infinity });
+	const target = s.activeFragments().filter(f => f.id < 100).reduce((a, b) => a.numCharge < b.numCharge ? a : b, {});
 	(
-		!!frags
+		!!target
 		&& (
 			spare_threads > 0 && target != Infinity
 				? ns.exec("chrg.js", "home", spare_threads, target.x, target.y)
@@ -871,13 +789,12 @@ export async function runGang(n, g = n.gang) {
 	const slp = async t => await n.sleep(t / (g.getBonusTime() > 5000 ? 25 : 1));
 	const other_gang_info = g.getOtherGangInformation;
 	const tick = async (q = () => Object.values(other_gang_info()).reduce((a, b) => a + b.power), l = q()) => (await n.sleep(50), l == q() && await tick());
-	const focus = g.getMemberNames().length > 10 ? "moneyGain" : "respectGain";
+	const focus = () => g.getMemberNames().length > 9 ? "moneyGain" : "respectGain";
 	const assignJob = task => (
 		g.getMemberNames().forEach(member => (
 			g.getEquipmentNames().forEach((item) => g.purchaseEquipment(member, item)),
 			["agi", "str", "def", "dex"].reduce((a, b) => a + g.getAscensionResult(member)?.[b], 0) > 6 && g.ascendMember(member),
-			// g.setMemberTask(member, task ?? g.getTaskNames().map(n => (g.setMemberTask(member, n), { name: n, gain: g.getMemberInformation(member)[focus] })).reduce((a, b) => a.gain > b.gain ? a : b).name),
-			g.setMemberTask(member, task ?? g.getTaskNames().reduce((a, b) => (g.setMemberTask(member, b), gain => gain < a.dat ? a : { name: b, dat: gain })(g.getMemberInformation(member)[focus])).name)
+			g.setMemberTask(member, task ?? g.getTaskNames().reduce((a, b) => (g.setMemberTask(member, b), (gain => gain < a.dat ? a : { name: b, dat: gain })(g.getMemberInformation(member)[focus()]))).name)
 		)),
 		printToPort(task?.split(" ").map(a => a[0]).join("") ?? "Jobs")
 	);
@@ -910,12 +827,12 @@ export async function runGang(n, g = n.gang) {
 
 /** @param {NS} ns */
 export async function golfedGang(n, g = n.gang,
-	s = async t => await n.sleep(t / (g.getBonusTime() > 5000 ? 25 : 1)),
+	s = async t => await n.sleep(t / (g.getBonusTime() > 5e3 ? 25 : 1)),
 	a = j =>
 		g.getMemberNames().map(m => (
 			g.getEquipmentNames().map((i) => g.purchaseEquipment(m, i)),
-			["agi", "str", "def", "dex"].map(k => g.getAscensionResult(m)?.[k]).reduce((a, c) => a + c) > 6 && g.ascendMember(m),
-			g.setMemberTask(m, j ?? g.getTaskNames().reduce((a, b) => (g.setMemberTask(m, b), i => i < a.g ? a : { n: b, g: i })(g.getMemberInformation(m)[g.getMemberNames().length == 12 ? "moneyGain" : "respectGain"])).n)
+			["agi", "str", "def", "dex"].reduce((a, b) => a + g.getAscensionResult(m)?.[b], 0) > 6 && g.ascendMember(m),
+			g.setMemberTask(m, j ?? g.getTaskNames().reduce((a, b) => (g.setMemberTask(m, b), i => i < a.g ? a : { n: b, g: i })(g.getMemberInformation(m)[g.getMemberNames().length > 9 ? "moneyGain" : "respectGain"])).n)
 		))
 ) {
 	(g.inGang() || g.createGang("Slum Snakes"))
@@ -940,8 +857,7 @@ export async function prsm(ns) {
 	ns.disableLog('ALL');
 	ns.enableLog('exec');
 	const hack_percentage = 0.01; // decimal percentage to hack
-	const job_delay = 5; // delay between HWGW jobs in ms
-	const batch_delay = job_delay * 4; // delay between batches
+	const batch_delay = 20; // delay between batches
 	//
 	const write_workers = () => ["hack", "grow", "weaken"].forEach(script => ((!ns.fileExists(script) && ns.write(`${script}.js`, `export const main = async ns => await ns.${script}(ns.args[0], { additionalMsec: ns.args[1] })`, "w")), sGet(ns).forEach(server => ns.scp(`${script}.js`, server))));
 	const getHostRam = server => Math.floor(getFreeRam(ns, server) - (server == "home" ? 100 : 0));
@@ -967,10 +883,10 @@ export async function prsm(ns) {
 		const getAvailableThreads = script => host_list.reduce((a, server) => a + Math.floor(getHostRam(server) / ns.getScriptRam(`${script.name}.js`)), 0);
 		const target = ns.getServer(host_list.reduce((a, b) => {
 			const rank = s => ns.getServerMaxMoney(s) / ns.getServerMinSecurityLevel(s);
-			return (ns.getServerRequiredHackingLevel(b) <= ns.getHackingLevel() / 2 && rank(a) > rank(b) ? a : b);
+			return (ns.getServerRequiredHackingLevel(b) <= ns.getHackingLevel() / 2 && rank(a) < rank(b) ? b : a);
 		}));
 		const clamp = n => n < 1 || n == Infinity ? 1 : n;
-		const hack_jobs = clamp(hack_percentage / (ns.formulas.hacking.hackPercent(target, run_p_obj)));
+		const hack_jobs = 1;//clamp(hack_percentage / (ns.formulas.hacking.hackPercent(target, run_p_obj)));
 		const grow_jobs = 1 + ns.growthAnalyze(target.hostname, (1 / (1 - (ns.formulas.hacking.hackPercent(target, run_p_obj) * hack_jobs))));
 		const sec_jobs = (target.hackDifficulty - target.minDifficulty) / ns.weakenAnalyze(1);
 		const wekn_jobs = sec_jobs + (hack_jobs * 0.04) + (grow_jobs * 0.08);
@@ -996,8 +912,8 @@ export async function prsm(ns) {
 					},
 					run_p_obj,
 				)
-				, {}), {}
-		);
+				, {})
+			, {});
 		(
 			ns.clearPort(ns.pid),
 			ns.writePort(ns.pid, target.hostname),
@@ -1009,25 +925,6 @@ export async function prsm(ns) {
 		await runLoop(await Run(ns, "getPlayer"))
 	)
 }
-
-/** @param {NS} ns */
-export async function stonks(ns, s = ns.stock) {
-	const thing = Object.fromEntries(s.getSymbols().map(sym => [sym, { "ask": s.getAskPrice(sym), "delta": 0, "previous": 0 }]));
-	(
-		s.purchaseWseAccount(),
-		s.getSymbols().forEach(s =>
-			ns.tprint(thing[s])),
-
-
-
-
-
-
-		await s.nextUpdate()
-	)
-}
-
-
 
 /** @param {NS} ns */
 export async function neofetch(ns) {
