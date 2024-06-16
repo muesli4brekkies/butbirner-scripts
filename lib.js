@@ -1,3 +1,9 @@
+// THIS FILE IS IN TRANSITION
+// REFER TO lib.ts AND TRANSPILE 
+// FOR UP-TO-DATE VERSION
+
+
+
 // iib.js
 export const CNST = {
 	NFG: "NeuroFlux Governor",
