@@ -155,7 +155,7 @@ const CON: Constants = {
     "Joey Tagliatelle",
     "Johnny Segment",
   ],
-  LOOP_FUNCTIONS: ["stan", "runGang", "prsm", "downDog"],
+  LOOP_FUNCTIONS: ["stan", "runGang", "prsm", /*"downDog"*/],
   ONESHOT_FUNCTIONS: [
     "darkwebShopping",
     "ownedAugs",
@@ -182,10 +182,10 @@ const CON: Constants = {
   WIN: eval("window"),
   DOC: eval("document"),
 } as const;
-const HOOKS = {
-  0: CON.DOC.getElementById("overview-extra-hook-0"),
-  1: CON.DOC.getElementById("overview-extra-hook-1"),
-};
+const HOOKS = [
+  CON.DOC.getElementById("overview-extra-hook-0"),
+  CON.DOC.getElementById("overview-extra-hook-1"),
+];
 
 function main(n: NS): void {
   (
@@ -221,15 +221,17 @@ async function gvnr(ns: NS): Promise<void> {
   const runLoop = async (is_first_start, timer) => (
     prettyLogs(ns),
     await prettyOverview(ns, timer),
-    timer % 40 == 0 && (await runScripts(ns, is_first_start)),
+    timer % 40 == 0 && (await scriptLoop(ns, is_first_start)),
     await util.slp(refresh_delay * 1e3),
     await runLoop(false, timer + refresh_delay)
   );
-  ns.tail(),
+  (
+    ns.tail(),
     ns.disableLog("ALL"),
     ns.tprintf(`${util.ansi.m}** ./gvnr.js **`),
     ns.atExit(() => ((HOOKS[0].innerText = ""), (HOOKS[1].innerText = ""))), // Clears the overview on exit to prevent stale data)
-    await runLoop(true, 0);
+    await runLoop(true, 0)
+  )
 }
 
 async function Run(
@@ -238,8 +240,8 @@ async function Run(
   params: (string | number)[] = [],
   props: string | number = "",
 ): Promise<any> | null {
-  !ns.fileExists("run.js") &&
-    ns.write(
+  !ns.fileExists("run.js")
+    && ns.write(
       `run.js`,
       [
         "/** @param ns {NS} */",
@@ -339,12 +341,13 @@ function sGet(ns: NS, m = /* @__PURE__ */ new Set(["home"])) {
 
 function readyFiley(ns: NS, file: string) {
   const data = ns.read(file);
-  return JSON.parse(!!data ? data : "[]");
+  try { return JSON.parse(data); }
+  catch { return data; }
 }
 
 function peekyPorty(ns: NS, script: string) {
   const data = ns.peek(ns.getRunningScript(script)?.pid ?? ns.pid);
-  return data == "NULL PORT DATA" ? "[]" : data;
+  return data == "NULL PORT DATA" ? "" : data;
 }
 
 function getCurrentNode(ns: NS) {
@@ -378,39 +381,34 @@ async function darkwebShopping(ns: NS) {
     Promise.resolve(),
   );
 }
-/**@param {NS} ns */
 
-async function murderate(ns: NS, s = ns.singularity) {
+async function murderate(ns: NS) {
   !(await is_Busy(ns)) &&
     (await Run(ns, "getPlayer", [], "numPeopleKilled")) < 30 &&
     (await Run(ns, "singularity.stopAction"), await Run(ns, "singularity.commitCrime", ["Homicide", 0]));
 }
 
-async function bd(n, target, s = n.singularity) {
-  await (async (h, w = (t, r = []) => (t == h ? r : w(n.scan(t)[0], [t, ...r]))) => (
-    s.connect(h),
-    w(target).map(s.connect),
-    n.tprintf(`${util.ansi.y}Backdoor started on ${target}`),
-    await s.installBackdoor(),
-    s.connect(h),
-    n.tprintf(`${util.ansi.g}Backdoor complete on ${target}`)
-  ))("home");
+async function bd(n, t, h = "home", c = (f = "connect") => n.singularity[f], f = (t, r = []) => t == h ? r : f(n.scan(t)[0], [t, ...r])) {
+  (
+    c()(h),
+    f(t).map(c()),
+    n.tprintf(`${util.ansi.y}Backdoor started on ${t}`),
+    await c("installBackdoor")(),
+    c()(h),
+    n.tprintf(`${util.ansi.g}Backdoor complete on ${t}`)
+  )
 }
 
-function persuade(
-  n: NS,
-  a = (s: string, p: string | undefined): void =>
-    n.scan(s).forEach((v) =>
-      v != p
-        ? a(v, s)
-        : [n.brutessh, n.ftpcrack, n.relaysmtp, n.sqlinject, n.httpworm, n.nuke].forEach((p) => {
-          try {
-            p(s);
-          } catch { }
-        }),
-    ),
-) {
-  a("home", undefined);
+function persuade(n: NS, s = "home", p: string | undefined): void {
+  n.scan(s).forEach((v) =>
+    v != p
+      ? persuade(n, v, s)
+      : [n.brutessh, n.ftpcrack, n.relaysmtp, n.sqlinject, n.httpworm, n.nuke].forEach((p) => {
+        try {
+          p(s);
+        } catch { }
+      }),
+  )
 }
 
 async function d43m0nD357r0y(ns: NS, date = /* @__PURE__ */ new Date(), wd = "w0r1d_d43m0n") {
@@ -426,9 +424,7 @@ async function d43m0nD357r0y(ns: NS, date = /* @__PURE__ */ new Date(), wd = "w0
 }
 
 function pServ(ns: NS) {
-  (ns.purchaseServer("#", 8) ||
-    sGet(ns).some((s) => [...Array(21).keys()].some((r) => ns.upgradePurchasedServer(s, r << 1)))) &&
-    pServ(ns);
+  (ns.purchaseServer("#", 8) || sGet(ns).some((s) => [...Array(21).keys()].some((r) => ns.upgradePurchasedServer(s, r << 1)))) && pServ(ns)
 }
 
 function prettyLogs(ns: NS) {
@@ -499,7 +495,7 @@ function prettyLogs(ns: NS) {
       "",
       ` bought augs x ${bought_augs_sans_nfg}, ${num_other_augs}/100 installed, NFG x ${ns.getResetInfo().ownedAugs.get(CON.NFG)}`,
       `${aug_info}`,
-      ` ${ns.read("temp/installAugsReason.txt")}`,
+      ` ${readyFiley(ns, "temp/installAugsReason.txt")}`,
       "",
     ].forEach((l) => ns.print(l));
 }
@@ -509,7 +505,10 @@ async function prettyOverview(ns: NS, timer) {
   const gang_info = peekyPorty(ns, "loop/runGang.js");
   const hacknet_info = readyFiley(ns, "temp/hacknet_info.txt");
   const date = Number(new Date());
-  const last_aug_time = +ns.read("temp/lastAugTime.txt") || date;
+  const last_aug_time = +readyFiley(ns, "temp/lastAugTime.txt") || date;
+
+  const colourise = (o) => o.lines.map((l) => [`<span style = "color:${o.col}" > ${l[0]} </span>`, `<span style="color:${o.col}">${l[1]}</span>`]);
+  const splitNBreak = (a, b) => [[a[0], b[0]].join("</br>"), [a[1], b[1]].join("</br>")];
 
   [HOOKS[0].innerHTML, HOOKS[1].innerHTML] = [
     {
@@ -563,69 +562,76 @@ async function prettyOverview(ns: NS, timer) {
       col: "yellow",
     },
   ]
-    .flatMap((o) => o.lines.map((l) => [`<span style="color:${o.col}">${l[0]}</span>`, `<span style="color:${o.col}">${l[1]}</span>`]))
-    .reduce((a, b) => [[a[0], b[0]].join("</br>"), [a[1], b[1]].join("</br>")]);
-
-
+    .flatMap(colourise)
+    .reduce(splitNBreak);
 }
 
-async function runScripts(ns: NS, is_first_start: boolean) {
-  await ["contracts.js", ...CON.ONESHOT_FUNCTIONS.map((s) => `oneshot/${s}.js`)].reduce(
-    async (last: Promise<void>, script: string) => (
-      await last,
-      is_first_start && ns.tprintf(`${util.ansi.y}starting ${script}`),
-      await (async (runpid: number): Promise<void> =>
-        !!runpid
-          ? (await ns.nextPortWrite(runpid),
-            is_first_start && (await util.slp(70 * Math.random()), ns.tprintf(`${util.ansi.g}${script} passed init`)))
-          : ns.tprintf(`${util.ansi.r}!! ${script} DID NOT RUN !!`))(ns.run(script))
-    ),
-    void null,
-  );
 
-  CON.LOOP_FUNCTIONS.map((s) => `loop/${s}.js`).forEach((script) => !ns.isRunning(script) && ns.run(script)),
-    is_first_start &&
-    (ns.print(`${util.ansi.m} Welcome to gnvr.js!`),
-      ns.tprintf(`${util.ansi.g}*** Startup Complete ***`),
+async function scriptLoop(ns: NS, is_first_start: boolean) {
+  (
+    await ["contracts.js", ...CON.ONESHOT_FUNCTIONS.map((s) => `oneshot/${s}.js`)].reduce(
+      async (last: Promise<void>, script: string) => (
+        await last,
+        is_first_start && ns.tprintf(`${util.ansi.y}starting ${script} `),
+        await (async (runpid: number): Promise<void> =>
+          !!runpid
+            ? (await ns.nextPortWrite(runpid),
+              is_first_start && (await util.slp(70 * Math.random()), ns.tprintf(`${util.ansi.g}${script} passed init`)))
+            : ns.tprintf(`${util.ansi.r} !!${script} DID NOT RUN!!`))(ns.run(script))
+      ),
+      void null,
+    ),
+    CON.LOOP_FUNCTIONS.map((s) => `loop/${s}.js`).forEach((script) => !ns.isRunning(script) && ns.run(script)),
+    is_first_start
+    && (
+      ns.print(`${util.ansi.m} Welcome to gnvr.js!`),
+      ns.tprintf(`${util.ansi.g}*** Startup Complete *** `),
       await util.slp(1e3),
-      ns.run("util/neofetch.js"));
+      ns.run("util/neofetch.js")
+    )
+  )
 }
 
 async function graft(ns: NS, g = ns.grafting) {
   !(await is_Busy(ns)) &&
-    ns.singularity.travelToCity("New Tokyo") &&
-    ["QLink", "ECorp HVMind Implant", "Xanipher", "OmniTek InfoLoad", "violet Congruity Implant"].some(
-      (aug) => g.graftAugmentation(aug, false) && ns.write("temp/workReport.txt", `grafting ${aug}`, "w"),
+    ns.singularity.travelToCity("New Tokyo")
+    && [
+      "QLink",
+      "ECorp HVMind Implant",
+      "Xanipher",
+      "OmniTek InfoLoad",
+      "violet Congruity Implant"
+    ].some(
+      (aug) => g.graftAugmentation(aug, false)
     );
 }
 
 async function factWork(ns: NS, s = ns.singularity) {
-  const available_augs = JSON.parse(ns.read("temp/availableAugs.txt"));
+  const available_augs = readyFiley(ns, "temp/availableAugs.txt");
   const target_faction = available_augs.reduce(
     (a, b) => (b.fact.name != CON.GANG_NAME && b.repdelta > a.repdelta ? b : a),
     { repdelta: 0 },
   ).fact?.name;
-  !(await is_Busy(ns)) &&
-    !!target_faction &&
-    (s.stopAction(),
+  !(await is_Busy(ns))
+    && !!target_faction
+    && (s.stopAction(),
       ["field", "security", "hacking"].some((job: FactionWorkType) =>
         s.workForFaction(available_augs.includes(CON.TRP) ? "Daedalus" : target_faction, job, false),
       ));
 }
 
 async function donate(ns: NS, s = ns.singularity) {
-  const availableAugs = JSON.parse(ns.read("temp/availableAugs.txt"));
+  const availableAugs = readyFiley(ns, "temp/availableAugs.txt");
   const rep_multi = await Run(ns, "getBitNodeMultipliers", [], "RepToDonateToFaction");
-  const nfginfo = JSON.parse(ns.read("temp/nfgInfo.txt"));
+  const nfginfo = readyFiley(ns, "temp/nfgInfo.txt");
   const donatefaction = "The Black Hand";
   // Donate to TBH to grind NF Governor
-  (
-    s.getFactionFavor(donatefaction) >= 150 * rep_multi
+  s.getFactionFavor(donatefaction) >= 150 * rep_multi
     && s.getFactionRep(donatefaction) < nfginfo.rep
     && s.donateToFaction(donatefaction, Math.max(nfginfo.cost, 1e11))
     && ns.tprintf(
       `${util.ansi.m}Donated $${ns.formatNumber(Math.max(nfginfo.cost, 1e11))} to ${donatefaction} (grinding NFG)`,
-    ), // print
+    ),
 
     // Donate to factions for augs
     availableAugs.forEach(
@@ -634,48 +640,58 @@ async function donate(ns: NS, s = ns.singularity) {
         && s.getFactionFavor(aug.fact.name) > 150 * rep_multi
         && aug.repdelta > 0
         && s.donateToFaction(aug.fact.name, 1e11)
-        && ns.tprintf(`${util.ansi.m}Donated $100B to ${aug.fact.name}`),
-      // print
+        && ns.tprintf(`${util.ansi.m}Donated $100B to ${aug.fact.name} `),
     )
-  )
 }
 
 async function installAugs(ns: NS) {
   const date = Number(new Date());
   const timestamp = Date().slice(4, 24);
-  const augs_array = JSON.parse(ns.read("temp/availableAugs.txt")).filter((aug) => aug.fact.name != CON.GANG_NAME);
-  const bought_augs = JSON.parse(ns.read("temp/boughtAugs.txt"));
-  const time_since_last_aug = date - +(ns.read("temp/lastAugTime.txt") ?? date);
-  const lowest_price =
-    augs_array.reduce((a, b) => (a.aug != CON.TRP && a?.price < b?.price ? a : b), Infinity)?.price ?? 0;
-  const favour_log = (aug) =>
-    `increased ${aug.fact.name} favour by ${Math.floor(aug.fact.favdelta)} to ${Math.floor(aug.fact.favdelta + aug.fact.fav)} - ${timestamp}}`;
-  const timeout_log = `timeout - $${ns.formatNumber(ns.getServerMoneyAvailable("home"))}/$${ns.formatNumber(lowest_price)}, multi x${Math.floor(+ns.read("temp/priceRatio.txt"))} - ${timestamp}`;
-  const writeLog = (log) => (
-    ns.write("temp/installAugsReason.txt", `installAugs #${1 + +ns.read("temp/installCounter.txt")}: ${log}`, "w"), true
-  );
+  const augs_array = readyFiley(ns, "temp/availableAugs.txt").filter((aug) => aug.fact.name != CON.GANG_NAME);
+  const bought_augs = readyFiley(ns, "temp/boughtAugs.txt");
+  const time_since_last_aug = date - +(readyFiley(ns, "temp/lastAugTime.txt") ?? date);
+  const lowest_price = augs_array.reduce((a, b) => (a.aug != CON.TRP && a?.price < b?.price ? a : b), Infinity)?.price ?? 0;
   const fav_to_donate = 150 * (await Run(ns, "getBitNodeMultipliers", [], "RepToDonateToFaction"));
+
+  const timeout_log =
+    `timeout - $${ns.formatNumber(ns.getServerMoneyAvailable("home"))} /$${ns.formatNumber(lowest_price)}, multi x${Math.floor(+readyFiley(ns, "temp/priceRatio.txt"))} - ${timestamp}`;
+  const favour_log = (aug) =>
+    `increased ${aug.fact.name} favour by ${Math.floor(aug.fact.favdelta)} to ${Math.floor(aug.fact.favdelta + aug.fact.fav)} - ${timestamp}`;
+
   const checkFavour = () =>
     augs_array.some(
-      (aug) =>
-        aug.fact.fav < fav_to_donate &&
-        (aug.fact.favdelta >= 50 || aug.fact.favdelta + aug.fact.fav > fav_to_donate) &&
-        writeLog(favour_log(aug)),
+      aug =>
+        aug.fact.fav < fav_to_donate
+        && (aug.fact.favdelta >= 50 || fav_to_donate < aug.fact.favdelta + aug.fact.fav)
+        && (writeLog(favour_log(aug)), true)
     );
+
   const checkTimeout = () =>
-    time_since_last_aug > 18e5 && lowest_price > ns.getServerMoneyAvailable("home") ? writeLog(timeout_log) : false;
-  const hasTRP = () => bought_augs.includes(CON.TRP) && writeLog("installed The Red Pill");
-  hasTRP() && (await Run(ns, "singularity.softReset", ["rset.js"])), // if have TRP then install asap
-    !(await is_Busy(ns)) &&
-    !!bought_augs.length &&
-    (checkTimeout() || checkFavour()) && // then install
-    (ns.write("temp/installCounter.txt", "" + (1 + +ns.read("temp/installCounter.txt")), "w"),
-      ns.write("report/installAugsLog.txt", ns.read("temp/installAugsReason.txt") + "\n", "a"),
-      await Run(ns, "singularity.installAugmentations", ["rset.js"]));
+    time_since_last_aug > 18e5
+    && lowest_price > ns.getServerMoneyAvailable("home")
+    && (writeLog(timeout_log), true);
+
+  const writeLog = (log) => (
+    ns.write("temp/installAugsReason.txt", `installAugs #${1 + +readyFiley(ns, "temp/installCounter.txt")}: ${log}`, "w")
+  );
+
+  (
+    bought_augs.includes(CON.TRP) && (writeLog("installed The Red Pill"), await Run(ns, "singularity.softReset", ["rset.js"])), // if have TRP then install asap
+    !(await is_Busy(ns))
+    && !!bought_augs.length
+    && (checkTimeout() || checkFavour())
+    && (
+      ns.write("temp/installCounter.txt", (1 + +readyFiley(ns, "temp/installCounter.txt")).toString(), "w"),
+      ns.write("report/installAugsLog.txt", readyFiley(ns, "temp/installAugsReason.txt") + "\n", "a"),
+      await Run(ns, "singularity.installAugmentations", ["rset.js"])
+    )
+  )
 }
 
 function buyAugs(ns: NS, s = ns.singularity) {
   const odd_factions = ["Bladeburners", "Church of the Machine God"];
+  const availableAugs = readyFiley(ns, "temp/availableAugs.txt");
+
   const timeStamp = () => ns.write("temp/lastAugTime.txt", "" + Date.now(), "w");
   const termPrint = (aug) =>
     ns.tprintf(
@@ -685,16 +701,22 @@ function buyAugs(ns: NS, s = ns.singularity) {
     ns.tprintf(
       `${util.ansi.m}Purchased ${util.ansi.c}${CON.NFG}${util.ansi.m} from ${faction} for $${ns.formatNumber(s.getAugmentationPrice(CON.NFG))}`,
     );
-  const availableAugs = JSON.parse(ns.read("temp/availableAugs.txt"));
-  ns
-    .getPlayer()
-    .factions.forEach(
-      (f) => f != CON.GANG_NAME && s.purchaseAugmentation(f, CON.NFG) && (timeStamp(), termPrintNFG(f)),
+
+  (
+    ns.getPlayer().factions
+      .forEach((f) =>
+        f != CON.GANG_NAME
+        && s.purchaseAugmentation(f, CON.NFG)
+        && (timeStamp(), termPrintNFG(f)),
+      ),
+    availableAugs.forEach((aug) =>
+      s.purchaseAugmentation(aug.fact.name, aug.aug)
+      && (timeStamp(), termPrint(aug))
     ),
-    availableAugs.forEach((aug) => s.purchaseAugmentation(aug.fact.name, aug.aug) && (timeStamp(), termPrint(aug))),
     odd_factions.forEach((fac) =>
       s.getAugmentationsFromFaction(fac).forEach((aug) => s.purchaseAugmentation(fac, aug)),
-    );
+    )
+  )
 }
 
 async function ownedAugs(ns: NS) {
@@ -720,7 +742,7 @@ async function ownedAugs(ns: NS) {
 }
 
 async function availableAugs(ns: NS, s = ns.singularity) {
-  const owned_augs = JSON.parse(ns.read("temp/ownedAugs.txt"));
+  const owned_augs = readyFiley(ns, "temp/ownedAugs.txt");
   const forbidden_factions = ["Shadows of Anarchy", "Bladeburners", "Church of the Machine God"];
   const aug_object = ns
     .getPlayer()
@@ -744,14 +766,14 @@ async function availableAugs(ns: NS, s = ns.singularity) {
   ns.write("temp/availableAugs.txt", JSON.stringify(aug_object ?? []), "w");
 }
 
-async function backdoor(n: NS, s = n.singularity) {
-  ["CSEC", "avmnite-02h", "run4theh111z", "I.I.I.I"].forEach(
-    (server) =>
-      !n.getServer(server).backdoorInstalled &&
-      n.hasRootAccess(server) &&
-      n.getHackingLevel() > n.getServerRequiredHackingLevel(server) &&
-      !n.isRunning("util/bd.js", "home", server) &&
-      n.run("util/bd.js", 1, server),
+async function backdoor(n: NS) {
+  ["CSEC", "avmnite-02h", "run4theh111z", "I.I.I.I", "home"].map(n.getServer).forEach(
+    (s) =>
+      !s.backdoorInstalled
+      && s.hasAdminRights
+      && n.getHackingLevel() > s.requiredHackingSkill
+      && !n.isRunning("util/bd.js", "home", s.hostname)
+      && n.run("util/bd.js", { threads: 1, ramOverride: 5.8 }, s.hostname),
   );
 }
 
@@ -771,65 +793,83 @@ function hacknetShindigs(ns: NS, h = ns.hacknet) {
     prod: node_array.reduce((a, n) => a + h.getNodeStats(n).production, 0),
     profit: profits,
   };
+
   const upMoney = () =>
-    ns.getServerMaxMoney(moneytargetserver) < 1e13 &&
-    h.spendHashes("Increase Maximum Money", moneytargetserver) &&
-    upMoney();
+    ns.getServerMaxMoney(moneytargetserver) < 1e13
+    && h.spendHashes("Increase Maximum Money", moneytargetserver)
+    && upMoney();
   const downSec = () =>
-    ns.getServerMinSecurityLevel(sectargetserver) > 1 &&
-    h.spendHashes("Reduce Minimum Security", sectargetserver) &&
-    downSec();
+    ns.getServerMinSecurityLevel(sectargetserver) > 1
+    && h.spendHashes("Reduce Minimum Security", sectargetserver)
+    && downSec();
+
   const nodeBuy = () => h.purchaseNode() + 1 && nodeBuy();
   const upParts = () =>
     ["Level", "Core", "Ram", "Cache"].forEach((part) => node_array.forEach((n) => h[`upgrade${part}`](n) && upParts()));
-  profits > -1 && (upMoney(), downSec(), nodeBuy(), upParts()),
-    ns.write("temp/hacknet_info.txt", JSON.stringify(info), "w");
+
+  (
+    (
+      profits > -1
+      && (
+        upMoney(),
+        downSec(),
+        nodeBuy(),
+        upParts()
+      )
+    ),
+    ns.write("temp/hacknet_info.txt", JSON.stringify(info), "w")
+  )
 }
 
-async function steves(ns: NS, s = ns.sleeve, b = ns.bladeburner, g = ns.gang) {
+async function steves(ns: NS) {
+  const [s, b, g] = [ns.sleeve, ns.bladeburner, ns.gang];
   const steves = util.getIndexArray(8).sort((a, b) => s.getSleeve(b).storedCycles - s.getSleeve(a).storedCycles);
   const get_low_skill = (steve) =>
     ["strength", "defense", "dexterity", "agility"].reduce(
       (a, skill) => (s.getSleeve(steve).skills[skill] < 25 ? skill : a),
       false,
     );
-  const try_train = (steve) =>
-    get_low_skill(steve)
-      ? (s.travel(steve, "Sector-12"), s.setToGymWorkout(steve, "Powerhouse Gym", "" + get_low_skill(steve)))
-      : false;
+  const try_train = (steve) => (skill => skill && (s.travel(steve, "Sector-12"), s.setToGymWorkout(steve, "Powerhouse Gym", skill.toString())))(get_low_skill(steve));
   const try_stabbin = (steve) => (!g.inGang() ? s.setToCommitCrime(steve, "Homicide") : false);
-  const bb_infil = (steve) =>
-    b.inBladeburner() && !steves.map((steve) => s.getTask(steve)).some((task) => task?.type === "INFILTRATE")
-      ? s.setToBladeburnerAction(steve, "Infiltrate synthoids")
-      : false;
-  const bb_contracts = (steve) =>
-    b.inBladeburner() &&
-    b
-      .getContractNames()
-      .some(
-        (contract) =>
-          steves.every((steve) => (s.getTask(steve) as SleeveBladeburnerTask)?.actionName !== contract) &&
-          b.getActionCountRemaining("Contract", contract) &&
-          s.setToBladeburnerAction(steve, "Take on contracts", contract),
-      );
+  const bb_infil = (steve) => (
+    b.inBladeburner()
+    && !steves.map((steve) => s.getTask(steve)).some((task) => task?.type === "INFILTRATE")
+    && s.setToBladeburnerAction(steve, "Infiltrate synthoids")
+  );
+  const bb_contracts = (steve) => (
+    b.inBladeburner()
+    && b.getContractNames()
+      .some((contract) => steves.every((steve) => (s.getTask(steve) as SleeveBladeburnerTask)?.actionName !== contract)
+        && b.getActionCountRemaining("Contract", contract)
+        && s.setToBladeburnerAction(steve, "Take on contracts", contract),
+      )
+  );
   const recover_or_idle = (steve) => (s.getSleeve(steve).shock ? s.setToShockRecovery(steve) : s.setToIdle(steve));
-  const buy_augs = (steve) =>
-    s
-      .getSleevePurchasableAugs(steve)
+  const buy_augs = (steve) => (
+    s.getSleevePurchasableAugs(steve)
       .sort((a, b) => a.cost - b.cost)
-      .forEach((aug) => s.purchaseSleeveAug(steve, aug.name));
-  steves.forEach((steve) => s.setToIdle(steve)),
-    steves.forEach(
-      (steve) => (
-        !s.getSleeve(steve).shock && buy_augs(steve),
-        s.getSleeve(steve).shock > 90
-          ? recover_or_idle(steve)
-          : try_train(steve) || try_stabbin(steve) || bb_infil(steve) || bb_contracts(steve) || recover_or_idle(steve)
-      ),
-    );
+      .forEach((aug) => s.purchaseSleeveAug(steve, aug.name))
+  );
+  (
+    steves.forEach((steve) => s.setToIdle(steve)),
+    steves.forEach((steve) => (
+      !s.getSleeve(steve).shock && buy_augs(steve),
+      s.getSleeve(steve).shock > 90
+        ? recover_or_idle(steve)
+        : try_train(steve)
+        || try_stabbin(steve)
+        || bb_infil(steve)
+        || bb_contracts(steve)
+        || (s.getSleeve(steve).shock
+          ? s.setToShockRecovery(steve)
+          : s.setToIdle(steve))
+
+    ))
+  )
 }
 
-async function bburner(ns: NS, s = ns.singularity, bb = ns.bladeburner) {
+async function bburner(ns: NS) {
+  const [s, b] = [ns.singularity, ns.bladeburner]
   const goTrain = async () => (
     await Run(ns, "singularity.stopAction"),
     await Run(ns, "singularity.travelToCity", ["Sector-12"]),
@@ -842,18 +882,25 @@ async function bburner(ns: NS, s = ns.singularity, bb = ns.bladeburner) {
       0,
     ])
   );
-  const upSkill = () =>
-    bb.upgradeSkill(
-      bb.getSkillNames().reduce((a, b) => (bb.getSkillUpgradeCost(a) < bb.getSkillUpgradeCost(b) ? a : b)),
-    ) && upSkill();
-  const doOp = async (op) =>
-    op
-      ? (([a, b]) => a + b > 1.8)(bb.getActionEstimatedSuccessChance("BlackOps", bb.getNextBlackOp().name)) &&
-      !(await is_Busy(ns)) &&
-      (s.stopAction(), bb.startAction("BlackOps", bb.getNextBlackOp().name))
-      : d43m0nD357r0y(ns);
-  bb.joinBladeburnerDivision(),
-    !bb.inBladeburner() ? await goTrain() : (upSkill(), await doOp(bb.getNextBlackOp()?.name));
+  const upSkill = () => (
+    b.upgradeSkill(
+      b.getSkillNames().reduce((a, c) => (b.getSkillUpgradeCost(a) < b.getSkillUpgradeCost(c) ? a : c)),
+    ) && upSkill()
+  );
+  const doOp = async (op) => (
+    !op
+      ? d43m0nD357r0y(ns)
+      : (([a, c]) => a + c > 1.8)(b.getActionEstimatedSuccessChance("BlackOps", b.getNextBlackOp().name))
+      && !(await is_Busy(ns))
+      && (s.stopAction(), b.startAction("BlackOps", b.getNextBlackOp().name))
+  );
+
+  (
+    b.joinBladeburnerDivision(),
+    !b.inBladeburner()
+      ? await goTrain()
+      : (upSkill(), await doOp(b.getNextBlackOp()?.name))
+  )
 }
 
 async function stan(ns: NS, s = ns.stanek) {
@@ -892,29 +939,23 @@ async function runGang(n, g = n.gang) {
   ) => (await n.sleep(50), l == q() && (await tick()));
   const focus = () => (g.getMemberNames().length > 9 ? "moneyGain" : "respectGain");
   const assignJob = (task) => (
-    g
-      .getMemberNames()
-      .forEach(
-        (member) => (
-          g.getEquipmentNames().forEach((item) => g.purchaseEquipment(member, item)),
-          ["agi", "str", "def", "dex"].reduce((a, b) => a + g.getAscensionResult(member)?.[b], 0) > 6 && g.ascendMember(member),
-          g.setMemberTask(
-            member,
-            task ??
-            g
-              .getTaskNames()
-              .reduce(
-                (a, b) => (
-                  g.setMemberTask(member, b),
-                  ((gain) => (gain < a.dat ? a : { name: b, dat: gain }))(g.getMemberInformation(member)[focus()])
-                ),
-              ).name,
-          )
-        ),
+    g.getMemberNames().forEach(
+      (member) => (
+        g.getEquipmentNames().forEach((item) => g.purchaseEquipment(member, item)),
+        ["agi", "str", "def", "dex"].reduce((a, b) => a + g.getAscensionResult(member)?.[b], 0) > 6 && g.ascendMember(member),
+        g.setMemberTask(
+          member,
+          task ?? g.getTaskNames().reduce(
+            (a, b) => (
+              g.setMemberTask(member, b),
+              ((gain) => (gain < a.dat ? a : { name: b, dat: gain }))(g.getMemberInformation(member)[focus()])
+            ),
+          ).name,
+        )
       ),
+    ),
     printToPort(
-      task
-        ?.split(" ")
+      task?.split(" ")
         .map((a) => a[0])
         .join("") ?? "Jobs",
     )
@@ -930,8 +971,11 @@ async function runGang(n, g = n.gang) {
       tw: g.getGangInformation().territoryWarfareEngaged,
     })
   );
-  (g.inGang() || g.createGang(CON.GANG_NAME)) &&
-    (tryRecruit(),
+
+  (
+    (g.inGang() || g.createGang(CON.GANG_NAME))
+    && (
+      tryRecruit(),
       setTW(),
       assignJob(undefined),
       await slp(15e3),
@@ -939,7 +983,9 @@ async function runGang(n, g = n.gang) {
       await slp(4500),
       assignJob("Territory Warfare"),
       await tick(),
-      await runGang(n));
+      await runGang(n)
+    )
+  )
 }
 
 async function golfedGang(
@@ -955,20 +1001,20 @@ async function golfedGang(
           ["agi", "str", "def", "dex"].reduce((a, b) => a + g.getAscensionResult(m)?.[b], 0) > 6 && g.ascendMember(m),
           g.setMemberTask(
             m,
-            j ??
-            g
-              .getTaskNames()
-              .reduce((a, b) =>
-                (g.setMemberTask(m, b), (i) => (i < a.g ? a : { n: b, g: i }))(
-                  g.getMemberInformation(m)[g.getMemberNames().length > 9 ? "moneyGain" : "respectGain"],
-                ),
-              ).n,
+            j ?? g.getTaskNames().reduce((a, b) =>
+              (g.setMemberTask(m, b), (i) => (i < a.g ? a : { n: b, g: i }))(
+                g.getMemberInformation(m)[g.getMemberNames().length > 9 ? "moneyGain" : "respectGain"],
+              ),
+            ).n,
           )
         ),
       ),
 ) {
-  (g.inGang() || g.createGang("Slum Snakes")) &&
-    (g.recruitMember(Math.random()),
+
+  (
+    (g.inGang() || g.createGang("Slum Snakes"))
+    && (
+      g.recruitMember(Math.random()),
       g.setTerritoryWarfare(Object.keys(g.getOtherGangInformation()).every((h) => g.getChanceToWinClash(h) > 0.5)),
       a(undefined),
       await s(15e3),
@@ -976,7 +1022,9 @@ async function golfedGang(
       await s(4500),
       a("Territory Warfare"),
       await g.nextUpdate(),
-      await runGang(n));
+      await runGang(n)
+    )
+  )
 }
 
 interface PlayerExp {
@@ -1185,15 +1233,7 @@ function step(ns, zoomievalue, target, bool = 1, randbool = true) {
   return { dx: x, dy: win.innerHeight - 200 };
 }
 
-async function portHandle(ns, barkval, happiness) {
-  if (ns.peek(ns.pid) === "NULL PORT DATA") return { bark: undefined, happiness: happiness };
-  ns.clearPort(ns.pid)
-  barkval = { bark: "*WAGS\nTAIL*", time: 1500 }
-  happiness += 1000;
-  return { bark: barkval, happiness: happiness };
-}
 
-const poopScript = 'export async function main(ns) {ns.disableLog("ALL");ns.atExit(() => ns.closeTail(ns.pid));ns.printRaw(React.createElement("h2", {}, "💩"));while(1) {ns.getRunningScript().tailProperties ?? ns.exit(); await ns.sleep(10000)}}';
 
 function poop(ns: NS, x: number, y: number, pooppid: number) {
   (
@@ -1206,6 +1246,13 @@ function poop(ns: NS, x: number, y: number, pooppid: number) {
 }
 
 async function downDog(ns: NS, prevposx: number, prevposy: number) {
+  async function portHandle(ns, barkval, happiness) {
+    if (ns.peek(ns.pid) === "NULL PORT DATA") return { bark: undefined, happiness: happiness };
+    ns.clearPort(ns.pid)
+    barkval = { bark: "*WAGS\nTAIL*", time: 1500 }
+    happiness += 1000;
+    return { bark: barkval, happiness: happiness };
+  }
   const asciis = {
     l: [`    ___`, ` __/_,  \`.  .-"""-.`, ` \\_,  | \\-'  /   )\`-')`, `  "") \`"\`    \  ((\`"\``, ` ___Y  ,    .'7 /|`, `(_,___/...-\` (_/_/         `,],
     r: [`                 ___`, `      .-"""-.  .\` ,_\\__`, ` ('-\`(   \\  '-/ |   ,_/   `, `   \`"\`))       \`"\` (""`, `      |\\ 4'.    ,  Y___`, `      \\_\\_) \`-...\\___,_)`,]
@@ -1261,6 +1308,8 @@ async function downDog(ns: NS, prevposx: number, prevposy: number) {
   }
 }
 
+
+const poopScript = 'export async function main(ns) {ns.disableLog("ALL");ns.atExit(() => ns.closeTail(ns.pid));ns.printRaw(React.createElement("h2", {}, "💩"));while(1) {ns.getRunningScript().tailProperties ?? ns.exit(); await ns.sleep(10000)}}';
 // credit yichizhng
 const dogPetter = `/** @param {NS} ns */
 export async function main(ns) {
