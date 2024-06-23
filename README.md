@@ -1,7 +1,9 @@
 # butbirner-scripts
 Script~~s~~ for playing BitBurner
 
-****\*\*\*SPOILERS\\*\****** - NOT SUITABLE FOR EARLY GAME
+**Templated from <https://github.com/shyguy1412/bb-external-editor>**
+
+****\*\*\*SPOILERS\*\*\****** - NOT SUITABLE FOR EARLY GAME
 ## Run notes
 * This is Typescript, which BitBurner does not run natively. I recommend using <https://github.com/shyguy1412/bb-external-editor> as a transpiler.
 * Run lib.js with a ramOverride of 4.7 to start. Pass any argument to lib.js to kill all scripts.
