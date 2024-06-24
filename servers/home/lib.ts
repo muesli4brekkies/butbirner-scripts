@@ -1,4 +1,4 @@
-import { FactionWorkType, NS, SleeveBladeburnerTask } from "NetscriptDefinitions";
+import { FactionWorkType, GangOtherInfoObject, NS, SleeveBladeburnerTask } from "NetscriptDefinitions";
 export {
   CON as CNST,
   Run,
@@ -36,7 +36,7 @@ export {
   util,
   writeLaunchers,
 };
-interface Constants {
+type Constants = {
   NFG: string;
   TRP: string;
   GANG_NAME: string;
@@ -48,6 +48,8 @@ interface Constants {
   UTIL_FUNCTIONS: readonly string[];
   DOC: Document;
   WIN: Window;
+
+  DOGGO_ASCII: readonly string[];
 }
 const CON: Constants = {
   NFG: "NeuroFlux Governor",
@@ -179,6 +181,11 @@ const CON: Constants = {
     "bburner",
   ],
   UTIL_FUNCTIONS: ["bd", "gvnr", "neofetch"],
+  DOGGO_ASCII
+    : [
+      `    ___`, ` __/_,  \`.  .-"""-.`, ` \\_,  | \\-'  /   )\`-')`, `  "") \`"\`    \  ((\`"\``, ` ___Y  ,    .'7 /|`, `(_,___/...-\` (_/_/         `,
+      `                 ___`, `      .-"""-.  .\` ,_\\__`, ` ('-\`(   \\  '-/ |   ,_/   `, `   \`"\`))       \`"\` (""`, `      |\\ 4'.    ,  Y___`, `      \\_\\_) \`-...\\___,_)`,
+    ],
   WIN: eval("window"),
   DOC: eval("document"),
 } as const;
@@ -240,20 +247,19 @@ async function Run(
   params: (string | number)[] = [],
   props: string | number = "",
 ): Promise<any> | null {
-  !ns.fileExists("run.js")
-    && ns.write(
-      `run.js`,
-      [
-        "/** @param ns {NS} */",
-        "export async function main(ns) {",
-        "const [path, props, ...params] = ns.args;",
-        'const func_return = path.split(".").reduce((a, b) => a[b], ns)(...params)',
-        'const return_value = !props ? func_return : props.split(".").reduce((a,b) => a?.[b], func_return)',
-        "ns.atExit(() => ns.writePort(ns.pid, return_value || 0));",
-        "}",
-      ].join("\n"),
-      "w",
-    );
+  ns.write(
+    `run.js`,
+    /*
+    "export async function main(ns) {",
+    "  const [path, props, ...params] = ns.args;",
+    '  const func_return = path.split(".").reduce((a, b) => a[b], ns)(...params)',
+    '  const return_value = !props ? func_return : props.split(".").reduce((a,b) => a?.[b], func_return)',
+    "  ns.atExit(() => ns.writePort(ns.pid, return_value));",
+    "}",
+    */
+    'export let main=n=>(r=>n.atExit(()=>n.writePort(n.pid,r)))(((z,[c,d,...e])=>(f=>d?z(f,d):f)(z(n,c)(...e)))((q,s)=>s.split(".").reduce((a,b)=>a?.[b],q),n.args))',
+    "w",
+  );
   const run_pid = ns.run(`run.js`, { ramOverride: 1.6 + ns.getFunctionRamCost(path) }, path, props, ...params);
   return !run_pid
     ? (ns.tprintf(`${util.ansi.r}!! ${path} DID NOT RUN !!`), null)
@@ -920,10 +926,6 @@ async function stan(ns: NS, s = ns.stanek) {
     await stan(ns);
 }
 
-interface GangStats {
-  power: number;
-}
-
 async function runGang(n, g = n.gang) {
   const tryRecruit = (name = CON.MEMBER_NAMES[Math.floor(Math.random() * CON.MEMBER_NAMES.length)]) =>
     g.getMemberNames().includes(name)
@@ -934,7 +936,7 @@ async function runGang(n, g = n.gang) {
   const slp = async (t) => await n.sleep(t / (g.getBonusTime() > 5e3 ? 25 : 1));
   const other_gang_info = g.getOtherGangInformation;
   const tick = async (
-    q = () => Object.values(other_gang_info()).reduce((a: number, b: GangStats) => a + b.power, 0),
+    q = () => Object.values(other_gang_info()).reduce((a: number, b: GangOtherInfoObject) => a + b.power, 0),
     l = q(),
   ) => (await n.sleep(50), l == q() && (await tick()));
   const focus = () => (g.getMemberNames().length > 9 ? "moneyGain" : "respectGain");
@@ -966,7 +968,7 @@ async function runGang(n, g = n.gang) {
       cycle: job,
       size: g.getMemberNames().length,
       power: g.getGangInformation().power,
-      nextpower: Object.values(other_gang_info()).reduce((a: number, b: GangStats) => (a > b.power ? a : b.power), 0),
+      nextpower: Object.values(other_gang_info()).reduce((a: number, b: GangOtherInfoObject) => (a > b.power ? a : b.power), 0),
       territory: g.getGangInformation().territory * 100,
       tw: g.getGangInformation().territoryWarfareEngaged,
     })
@@ -1027,7 +1029,7 @@ async function golfedGang(
   )
 }
 
-interface PlayerExp {
+type PlayerExp = {
   hacking: number;
 }
 
@@ -1174,12 +1176,6 @@ async function neofetch(ns: NS) {
   await ascii.reduce(async (a, b) => (await a, ns.tprintf(b), util.slp(Math.random() * 10 * 7)), Promise.resolve());
 }
 
-const win = eval("window")
-const doc = eval("document")
-const rn = Math.random
-const tget = (ns) => ns.getRunningScript().tailProperties ?? ns.exit()
-const names = ["Wickes", "Updog", "Mikasa", "Snuffles", "Boris", "Gnasher", "Doug", "Chester"]
-const bark = (ns, bark) => ns.print(bark);
 
 
 /** @param {NS} ns */
@@ -1217,45 +1213,47 @@ function poopCheck(ns, timestamp, happiness) {
 }
 
 
-function step(ns, zoomievalue, target, bool = 1, randbool = true) {
-  let screenratio = win.innerHeight / win.innerWidth,
-    x = tget(ns).x,
-    y = tget(ns).y;
-  if (target.x > x) { x += (rn() * zoomievalue) * 2 * (10 * zoomievalue); }
-  else if (target.x < x) { x -= (rn() * zoomievalue) * 2 * (10 * zoomievalue) }
-  if (rn() - 0.5 > 0) bool = -1
-  if (zoomievalue && randbool) {
-    x += 3 * rn() * bool;
-    y += 3 * rn() * bool * screenratio;
-  }
-  let boundsadjust = checkBounds(ns, tget(ns))
-  x += boundsadjust.x;
-  return { dx: x, dy: win.innerHeight - 200 };
-}
 
 
-
-function poop(ns: NS, x: number, y: number, pooppid: number) {
-  (
-    ns.write("poop.js", poopScript, "w"),
-    pooppid = ns.run("poop.js"),
-    ns.tail(pooppid),
-    ns.resizeTail(150, 100, pooppid),
-    ns.moveTail(x, y, pooppid)
-  )
-}
 
 async function downDog(ns: NS, prevposx: number, prevposy: number) {
+  function poop(ns: NS, x: number, y: number, pooppid: number) {
+    (
+      ns.write("poop.js", poopScript, "w"),
+      pooppid = ns.run("poop.js"),
+      ns.tail(pooppid),
+      ns.resizeTail(150, 100, pooppid),
+      ns.moveTail(x, y, pooppid)
+    )
+  }
+  function step(ns, zoomievalue, target, bool = 1, randbool = true) {
+    let screenratio = win.innerHeight / win.innerWidth,
+      x = tget(ns).x,
+      y = tget(ns).y;
+    if (target.x > x) { x += (rn() * zoomievalue) * 2 * (10 * zoomievalue); }
+    else if (target.x < x) { x -= (rn() * zoomievalue) * 2 * (10 * zoomievalue) }
+    if (rn() - 0.5 > 0) bool = -1
+    if (zoomievalue && randbool) {
+      x += 3 * rn() * bool;
+      y += 3 * rn() * bool * screenratio;
+    }
+    let boundsadjust = checkBounds(ns, tget(ns))
+    x += boundsadjust.x;
+    return { dx: x, dy: win.innerHeight - 200 };
+  }
+
+  const win = eval("window")
+  const doc = eval("document")
+  const rn = Math.random
+  const tget = (ns) => ns.getRunningScript().tailProperties ?? ns.exit()
+  const names = ["Wickes", "Updog", "Mikasa", "Snuffles", "Boris", "Gnasher", "Doug", "Chester"]
+  const bark = (ns, bark) => ns.print(bark);
   async function portHandle(ns, barkval, happiness) {
     if (ns.peek(ns.pid) === "NULL PORT DATA") return { bark: undefined, happiness: happiness };
     ns.clearPort(ns.pid)
     barkval = { bark: "*WAGS\nTAIL*", time: 1500 }
     happiness += 1000;
     return { bark: barkval, happiness: happiness };
-  }
-  const asciis = {
-    l: [`    ___`, ` __/_,  \`.  .-"""-.`, ` \\_,  | \\-'  /   )\`-')`, `  "") \`"\`    \  ((\`"\``, ` ___Y  ,    .'7 /|`, `(_,___/...-\` (_/_/         `,],
-    r: [`                 ___`, `      .-"""-.  .\` ,_\\__`, ` ('-\`(   \\  '-/ |   ,_/   `, `   \`"\`))       \`"\` (""`, `      |\\ 4'.    ,  Y___`, `      \\_\\_) \`-...\\___,_)`,]
   }
   ns.write("petter.js", dogPetter, "w");
   const remnam = names.filter(name => !ns.ps().map(prog => ns.getRunningScript(prog.pid).title).includes(name))
@@ -1277,7 +1275,7 @@ async function downDog(ns: NS, prevposx: number, prevposy: number) {
     const [x, y] = [tget(ns).x, tget(ns).y - 50] // centre on the box
     let delay = 100
     let zoomievalue = zoomieCalc(ticker);
-    const ascii = pos.x > x ? asciis.r : asciis.l;
+    const ascii = pos.x > x ? CON.DOGGO_ASCII[0] : CON.DOGGO_ASCII[1];
     let dvar = step(ns, zoomievalue, pos);
     let porthandlereturn = await portHandle(ns, delay, happiness)
     let barkval = porthandlereturn?.bark;
@@ -1296,7 +1294,7 @@ async function downDog(ns: NS, prevposx: number, prevposy: number) {
       ns.print(`happiness: ${Math.round(happiness / 1000)}`)
     }
     if (zoomievalue && rn() * 1000 < 1) poop(ns, x, y + 150, undefined);
-    barkval === undefined ? ascii.forEach(line => ns.print(line)) : bark(ns, barkval.bark)
+    ns.print(barkval === undefined ? ascii : bark(ns, barkval.bark));
     ns.resizeTail(250, 200)
     ns.moveTail(dvar.dx, dvar.dy);
     barkval == undefined ? await ns.sleep(delay) : await ns.sleep(barkval.time)
@@ -1308,8 +1306,8 @@ async function downDog(ns: NS, prevposx: number, prevposy: number) {
   }
 }
 
-
 const poopScript = 'export async function main(ns) {ns.disableLog("ALL");ns.atExit(() => ns.closeTail(ns.pid));ns.printRaw(React.createElement("h2", {}, "💩"));while(1) {ns.getRunningScript().tailProperties ?? ns.exit(); await ns.sleep(10000)}}';
+
 // credit yichizhng
 const dogPetter = `/** @param {NS} ns */
 export async function main(ns) {
