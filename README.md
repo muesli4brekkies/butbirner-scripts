@@ -1,4 +1,4 @@
-# butbirner-scripts
+# butbirner-scripts (sic)
 Script~~s~~ for playing BitBurner
 
 **Templated from <https://github.com/shyguy1412/bb-external-editor>**
