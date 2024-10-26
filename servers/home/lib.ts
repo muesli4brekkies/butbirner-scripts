@@ -1,4 +1,4 @@
-import { FactionWorkType, GangOtherInfoObject, NS, SleeveBladeburnerTask } from "NetscriptDefinitions";
+import { FactionWorkType, GangOtherInfoObject, NS, SleevePerson } from "NetscriptDefinitions";
 
 declare global {
   interface Array<T> {
@@ -20,12 +20,11 @@ Array.prototype.someAsync = async function <T>(func: (v: T) => Promise<boolean>)
 }
 
 Array.prototype.everyAsync = async function <T>(func: (v: T) => Promise<boolean>): Promise<boolean> {
-  return await this.reduce(async (ret, cur) => (await ret) && await func(cur), (async () => false)())
+  return await this.reduce(async (ret, cur) => (await ret) && await func(cur), (async () => true)())
 }
 
 export {
-  contracts as solveAllContracts,
-  CON as CNST,
+  CON,
   Run,
   availableAugs,
   backdoor,
@@ -50,7 +49,6 @@ export {
   main,
   murderate,
   neofetch,
-  ownedAugs,
   pServ,
   persuade,
   prsm,
@@ -63,6 +61,7 @@ export {
   writeLaunchers,
 };
 type Constants = {
+  CYCLE_RATE: number;
   NFG: string;
   TRP: string;
   GANG_NAME: string;
@@ -75,9 +74,10 @@ type Constants = {
   DOC: Document;
   WIN: Window;
 
-  DOGGO_ASCII: readonly string[];
+  DOGGO_ASCII: readonly string[][];
 }
 const CON: Constants = {
+  CYCLE_RATE: 40,
   NFG: "NeuroFlux Governor",
   TRP: "The Red Pill",
   GANG_NAME: "Slum Snakes",
@@ -118,8 +118,7 @@ const CON: Constants = {
     "ADR-V2 Pheromone Gene",
     "ECorp HVMind Implant",
     "QLink",
-    "nickofolas Congruity Implant",
-    "The Red Pill",
+    "The Red Pill"
   ],
   ALL_FACTIONS: [
     "Illuminati",
@@ -155,7 +154,7 @@ const CON: Constants = {
     "CyberSec",
     "Bladeburners",
     "Church of the Machine God",
-    "Shadows of Anarchy",
+    "Shadows of Anarchy"
   ],
   MEMBER_NAMES: [
     "Tony Harrison",
@@ -181,12 +180,11 @@ const CON: Constants = {
     "Non-Bio Bruce",
     "Rockhead Rumple",
     "Joey Tagliatelle",
-    "Johnny Segment",
+    "Johnny Segment"
   ],
   LOOP_FUNCTIONS: ["stan", "runGang", "prsm", /*"downDog"*/],
   ONESHOT_FUNCTIONS: [
     "darkwebShopping",
-    "ownedAugs",
     "availableAugs",
     "hacknetShindigs",
     "pServ",
@@ -205,13 +203,13 @@ const CON: Constants = {
     "persuade",
     "steves",
     "bburner",
-    "contracts",
+    "contracts"
   ],
   UTIL_FUNCTIONS: ["bd", "gvnr", "neofetch"],
   DOGGO_ASCII
     : [
-      `    ___`, ` __/_,  \`.  .-"""-.`, ` \\_,  | \\-'  /   )\`-')`, `  "") \`"\`    \  ((\`"\``, ` ___Y  ,    .'7 /|`, `(_,___/...-\` (_/_/         `,
-      `                 ___`, `      .-"""-.  .\` ,_\\__`, ` ('-\`(   \\  '-/ |   ,_/   `, `   \`"\`))       \`"\` (""`, `      |\\ 4'.    ,  Y___`, `      \\_\\_) \`-...\\___,_)`,
+      [`    ___`, ` __/_,  \`.  .-"""-.`, ` \\_,  | \\-'  /   )\`-')`, `  "") \`"\`    \  ((\`"\``, ` ___Y  ,    .'7 /|`, `(_,___/...-\` (_/_/         `],
+      [`                 ___`, `      .-"""-.  .\` ,_\\__`, ` ('-\`(   \\  '-/ |   ,_/   `, `   \`"\`))       \`"\` (""`, `      |\\ 4'.    ,  Y___`, `      \\_\\_) \`-...\\___,_)`]
     ],
   WIN: eval("window"),
   DOC: eval("document"),
@@ -219,79 +217,8 @@ const CON: Constants = {
 
 const HOOKS = [
   CON.DOC.getElementById("overview-extra-hook-0"),
-  CON.DOC.getElementById("overview-extra-hook-1"),
+  CON.DOC.getElementById("overview-extra-hook-1")
 ];
-
-async function main(n: NS) {
-  (
-    n.ps().forEach((s) => n.closeTail(s.pid)),
-    sGet(n).forEach((s) => n.killall(s, true)),
-    !n.args.length && (writeLaunchers(n), n.run("util/gvnr.js"))
-  )
-}
-
-function writeLaunchers(ns: NS): void {
-  (
-    ["oneshot", "loop", "util"].forEach((dir) => ns.ls("home", dir).forEach((s) => ns.rm(s))),
-    [
-      [CON.UTIL_FUNCTIONS, "util"],
-      [CON.LOOP_FUNCTIONS, "loop"],
-      [CON.ONESHOT_FUNCTIONS, "oneshot"]
-    ]
-      .forEach(([fns, dir]: [string[], string]) => fns.forEach(fn =>
-        ns.write(
-          `${dir}/${fn}.js`,
-          `import { ${fn} } from "lib.js"; export const main = async ns => (ns.atExit(() => (ns.clearPort(ns.pid),ns.writePort(ns.pid, ""))), await ${fn}(ns,ns.args[0]));`,
-          "w",
-        )
-      )
-      )
-  )
-}
-
-async function gvnr(ns: NS, is_first_start = true, timer = 0): Promise<void> {
-  (
-    is_first_start
-    && (
-      ns.atExit(() => (HOOKS[0].innerText = "", HOOKS[1].innerText = "", ns.closeTail())),
-      ns.tail(),
-      ns.disableLog("ALL"),
-      ns.tprintf(`${util.ansi.m}** ./gvnr.js **`)
-    ),
-    await [
-      timer % 40 ? async _ => void _ : scriptLoop.bind(null, ns, is_first_start),
-      prettyLogs.bind(null, ns),
-      prettyOverview.bind(null, ns, timer),
-      util.slp.bind(null, 1e3),
-      gvnr.bind(null, ns, false, timer + 1),
-    ].forEachAsync(async fn => await fn())
-  )
-}
-
-async function Run(
-  ns: NS,
-  path: string,
-  params: (string | number)[] = [],
-  props: string | number = "",
-): Promise<any> | null {
-  ns.write(
-    `run.js`,
-    /*
-    "export async function main(ns) {",
-    "  const [path, props, ...params] = ns.args;",
-    '  const func_return = path.split(".").reduce((a, b) => a[b], ns)(...params)',
-    '  const return_value = !props ? func_return : props.split(".").reduce((a,b) => a?.[b], func_return)',
-    "  ns.atExit(() => ns.writePort(ns.pid, return_value));",
-    "}",
-    */
-    'export let main=n=>(r=>n.atExit(()=>n.writePort(n.pid,r)))(((z,[c,d,...e])=>(f=>d?z(f,d):f)(z(n,c)(...e)))((q,s)=>s.split(".").reduce((a,b)=>a?.[b],q),n.args))',
-    "w",
-  );
-  const run_pid = ns.run(`run.js`, { ramOverride: 1.6 + ns.getFunctionRamCost(path) }, path, props, ...params);
-  return !run_pid
-    ? (ns.tprintf(`${util.ansi.r}!! ${path} DID NOT RUN !!`), null)
-    : (await ns.nextPortWrite(run_pid), ns.readPort(run_pid));
-}
 
 const util = {
   lmaocat: async function (element_id: string, extra_style: string, timeout: number = 1e4) {
@@ -348,14 +275,89 @@ const util = {
     // default
     d: "\x1B[0m",
     // bold
-    bl: "\x1B[2m",
+    bl: "\x1B[1m",
   },
   getIndexArray: (n: number): number[] => [...Array(n).keys()],
   tickString: (t: number, l = 40): string => (t % l ? "#".repeat((t / 4) % (l / 4)) + `|/-\\`[t % 4] : "#--exec--#"),
   digiClock: (r = Date.now(), c = (t: number, d = 60, v = (r / t) % d | 0) => (v <= 9 ? "0" + v : v)): string => (r < 864e5 ? "" : c(864e5, 1 / 0) + "-") + c(36e5, 24) + ":" + c(6e4) + ":" + c(1e3),
   ramFormat: (ram: number): string => ram < 1e3 ? ram.toFixed(2) + "GB" : ram < 1e6 ? (ram / 1e3).toFixed(2) + "TB" : (ram / 1e6).toFixed(2) + "PB",
-  slp: async (t: number): Promise<void> => await new Promise((r) => setTimeout(r, t)),
+  cashFormat: (ns: NS, cash: number): string => "$" + ns.formatNumber(cash),
+  slp: (t: number) => async (): Promise<void> => await new Promise((r) => setTimeout(r, t)),
 };
+
+async function main(n: NS) {
+  (
+    n.ps().forEach((s) => n.closeTail(s.pid)),
+    sGet(n).forEach((s) => n.killall(s, true)),
+    !n.args.length && (writeLaunchers(n), n.run("util/gvnr.js"))
+  )
+}
+
+function writeLaunchers(ns: NS): void {
+  (
+    ["oneshot", "loop", "util"].forEach((dir) => ns.ls("home", dir).forEach((s) => ns.rm(s))),
+    [
+      [CON.UTIL_FUNCTIONS, "util"],
+      [CON.LOOP_FUNCTIONS, "loop"],
+      [CON.ONESHOT_FUNCTIONS, "oneshot"]
+    ]
+      .forEach(([fns, dir]: [readonly string[], string]) => fns.forEach(fn =>
+        ns.write(
+          `${dir}/${fn}.js`,
+          `import { ${fn} } from "lib.js"; export const main = async ns => (ns.atExit(() => (ns.clearPort(ns.pid),ns.writePort(ns.pid, ""))), await ${fn}(ns,ns.args[0]));`,
+          "w",
+        )
+      )
+      )
+  )
+}
+
+async function gvnr(ns: NS, is_first_start = true, timer = 0): Promise<void> {
+  (
+    is_first_start
+    && (
+      ns.atExit(() => (HOOKS[0].innerText = "", HOOKS[1].innerText = "", ns.closeTail())),
+      ns.ui.clearTerminal(),
+      ns.tail(),
+      ns.disableLog("ALL"),
+      ns.tprintf(`${util.ansi.m}** ./gvnr.js **`)
+    ),
+    await [
+      prettyLogs(ns),
+      prettyOverview(ns)(timer),
+      timer % CON.CYCLE_RATE
+        ? async _ => void _
+        : scriptLoop(ns)(is_first_start),
+      util.slp(1e3),
+      gvnr.bind(null, ns, false, timer + 1),
+    ].forEachAsync(async fn => await fn())
+  )
+}
+
+async function Run(
+  ns: NS,
+  path: string,
+  params: (string | number)[] = [],
+  props: string | number = "",
+): Promise<any> | null {
+  ns.write(
+    `run.js`,
+    /*
+    "export async function main(ns) {",
+    "  const [path, props, ...params] = ns.args;",
+    '  const func_return = path.split(".").reduce((a, b) => a[b], ns)(...params)',
+    '  const return_value = !props ? func_return : props.split(".").reduce((a,b) => a?.[b], func_return)',
+    "  ns.atExit(() => ns.writePort(ns.pid, return_value));",
+    "}",
+    */
+    'export let main=n=>(r=>n.atExit(()=>n.writePort(n.pid,r)))(((z,[c,d,...e])=>(f=>d?z(f,d):f)(z(n,c)(...e)))((q,s)=>s.split(".").reduce((a,b)=>a?.[b],q),n.args))',
+    "w",
+  );
+  const run_pid = ns.run(`run.js`, { ramOverride: 1.6 + ns.getFunctionRamCost(path) }, path, props, ...params);
+  return !run_pid
+    ? (ns.tprintf(`${util.ansi.r}!! ${path} DID NOT RUN !!`), null)
+    : (await ns.nextPortWrite(run_pid), ns.readPort(run_pid));
+}
 
 function getFreeRam(ns: NS, host: string): number {
   return ns.getServerMaxRam(host) - ns.getServerUsedRam(host);
@@ -363,8 +365,11 @@ function getFreeRam(ns: NS, host: string): number {
 
 async function is_Busy(ns: NS): Promise<boolean> {
   return (
-    (await Run(ns, "singularity.getCurrentWork", [""], "type")) == "GRAFTING" ||
-    ((await Run(ns, "bladeburner.inBladeburner")) && !!(await Run(ns, "bladeburner.getCurrentAction", [""], "name")))
+    (await Run(ns, "singularity.getCurrentWork", [""], "type")) == "GRAFTING"
+    || (
+      (await Run(ns, "bladeburner.inBladeburner"))
+      && !!(await Run(ns, "bladeburner.getCurrentAction", [""], "name"))
+    )
   );
 }
 
@@ -393,13 +398,19 @@ function buyTOR(ns: NS): void {
 }
 
 async function ramUp(ns: NS): Promise<void> {
-  (await Run(ns, "singularity.upgradeHomeRam")) && (ns.tprintf(util.ansi.g + "Upgraded home ram"), true) && ramUp(ns);
+  (
+    (await Run(ns, "singularity.upgradeHomeRam"))
+    && (ns.tprintf(util.ansi.g + "Upgraded home ram"), true)
+    && ramUp(ns)
+  )
 }
 
 async function coresUp(ns: NS): Promise<void> {
-  (await Run(ns, "singularity.upgradeHomeCores")) &&
-    (ns.tprintf(util.ansi.g + "Upgraded home cores"), true) &&
-    coresUp(ns);
+  (
+    (await Run(ns, "singularity.upgradeHomeCores"))
+    && (ns.tprintf(util.ansi.g + "Upgraded home cores"), true)
+    && coresUp(ns)
+  )
 }
 
 async function factionJoin(n: NS, s = n.singularity) {
@@ -407,16 +418,15 @@ async function factionJoin(n: NS, s = n.singularity) {
 }
 
 async function darkwebShopping(ns: NS) {
-  await ["BruteSSH", "FTPCrack", "relaySMTP", "HTTPWorm", "SQLInject"].reduce(
-    async (a, b) => (await a, await Run(ns, "singularity.purchaseProgram", [`${b}.exe`])),
-    Promise.resolve(),
-  );
+  await ["BruteSSH", "FTPCrack", "relaySMTP", "HTTPWorm", "SQLInject"].forEachAsync(async p => await Run(ns, "singularity.purchaseProgram", [`${p}.exe`]));
 }
 
 async function murderate(ns: NS) {
-  !(await is_Busy(ns)) &&
-    (await Run(ns, "getPlayer", [], "numPeopleKilled")) < 30 &&
-    (await Run(ns, "singularity.stopAction"), await Run(ns, "singularity.commitCrime", ["Homicide", 0]));
+  (
+    !(await is_Busy(ns))
+    && (await Run(ns, "getPlayer", [], "numPeopleKilled")) < 30
+    && (await Run(ns, "singularity.stopAction"), await Run(ns, "singularity.commitCrime", ["Homicide", 0]))
+  )
 }
 
 async function bd(n, t, h = "home", c = (f = "connect") => n.singularity[f], f = (t, r = []) => t == h ? r : f(n.scan(t)[0], [t, ...r])) {
@@ -443,186 +453,216 @@ function persuade(n: NS, s = "home", p: string | undefined): void {
 }
 
 async function d43m0nD357r0y(ns: NS, date = /* @__PURE__ */ new Date(), wd = "w0r1d_d43m0n") {
-  ((sGet(ns).includes(wd) &&
-    (await Run(ns, "getHackingLevel")) > (await Run(ns, "getServerRequiredHackingLevel", [wd]))) ||
-    (ns.bladeburner.inBladeburner() && !ns.bladeburner.getNextBlackOp())) &&
-    (["installCounter.txt", "installAugsReason.txt", "installAugsLog.txt"].map((f) => ns.rm(`temp/${f}`)),
-      ns.write(
-        "report/nodeLog.txt",
-        `${await getCurrentNode(ns)} completed  - ${date.toLocaleTimeString()} ${date.toLocaleDateString()}`,
-      ),
-      await Run(ns, "singularity.destroyW0r1dD43m0n", [12, "rset.js"]));
-}
-
-function pServ(ns: NS) {
-  (ns.purchaseServer("#", 8) || sGet(ns).some((s) => [...Array(21).keys()].some((r) => ns.upgradePurchasedServer(s, r << 1)))) && pServ(ns)
-}
-
-async function prettyLogs(ns: NS) {
-  const access_list = sGet(ns).filter(
-    (s) => ns.hasRootAccess(s) && ns.getServerRequiredHackingLevel(s) <= ns.getHackingLevel(),
-  );
-  const [funded_list, total_max_ram, total_free_ram] = access_list
-    .reduce(([funded, max_ram, free_ram], b) => [
-      [...funded, ns.getServerMaxMoney(b) ? b : null],
-      max_ram + ns.getServerMaxRam(b),
-      free_ram + getFreeRam(ns, b)],
-      [[], 0, 0]);
-  const [num_nfg, not_nfg, augs_sans_nfg] = readyFiley(ns, "temp/boughtAugs.txt")
-    .reduce(([y_nfg, n_nfg, sans_nfg], aug) => aug == CON.NFG ? [y_nfg + 1, n_nfg, sans_nfg] : [y_nfg, n_nfg + 1, [...sans_nfg, aug]], [0, 0, []]);
-  const bought_aug_info = augs_sans_nfg.map((aug) => " \xB7" + aug).join("\n") + (num_nfg ? "\n \xB7 NeuroFlux Governor x" + num_nfg : "");
-  const num_other_augs = readyFiley(ns, "temp/installedAugs.txt").reduce((acc, aug) => acc + (aug != CON.NFG), 0);
-
-  const percColour = (perc) =>
-    `${perc < 33 ? util.ansi.r : perc < 66 ? util.ansi.y : perc < 85 ? util.ansi.c : util.ansi.g}${perc.padStart(6, " ")}%${util.ansi.d}`;
-  const secColour = (sec) => `${sec < 5 ? util.ansi.g : util.ansi.y}${("" + sec).padStart(3, " ")}${util.ansi.d}`;
-  const getInfo = (server) => [
-    Math.ceil(ns.getServerSecurityLevel(server)).toString().padStart(3, " "),
-    secColour(
-      Math.ceil(ns.getServerSecurityLevel(server) - ns.getServerMinSecurityLevel(server))
-        .toString()
-        .padStart(3, " ")
-    ),
-    ns.formatNumber(ns.getServerMoneyAvailable(server)).toString().padStart(8, " "),
-    ns.formatNumber(ns.getServerMaxMoney(server)).toString().padStart(8, " "),
-    percColour(((ns.getServerMoneyAvailable(server) / ns.getServerMaxMoney(server)) * 100).toFixed(2)),
-    util.digiClock(ns.getWeakenTime(server)),
-    server == peekyPorty(ns, "loop/prsm.js") ? `${server} ${util.ansi.w}---${util.ansi.y}\u0394<` : server,
-  ];
-
   (
-    ns.resizeTail(800, 1e3),
-    ns.moveTail(CON.WIN.innerWidth - 1150, 0),
-    ns.clearLog(),
-    [
-      ...[
-        ...funded_list.filter(Boolean).map(getInfo),
-        [
-          "sec",
-          " \u0394 ",
-          "  $cur  ",
-          "  $max  ",
-          "   %   ",
-          "  ~ete  ",
-          ` Target ~ ${funded_list.filter(Boolean).length}/${sGet(ns).filter(ns.getServerMaxMoney).length}`,
-        ],
-      ].map(((line) => ` ${line.join(" | ")}`)),
-      "",
-      ` home - ${util.ramFormat(getFreeRam(ns, "home"))}/${util.ramFormat(ns.getServerMaxRam("home"))}`,
-      ` network - ${util.ramFormat(total_free_ram)}/${util.ramFormat(total_max_ram)}`,
-      ` threads - ${ns.formatNumber(Math.floor(total_free_ram / ns.getScriptRam("weaken.js")))}/${ns.formatNumber(Math.floor(total_max_ram / ns.getScriptRam("weaken.js")))} threads`,
-      "",
-      ` bought augs x ${not_nfg}, ${num_other_augs}/100 installed, NFG x ${(await Run(ns, "getResetInfo", [], "ownedAugs")).get(CON.NFG)}`,
-      `${bought_aug_info}`,
-      ` ${readyFiley(ns, "temp/installAugsReason.txt")}`,
-      "",
-    ].forEach((l) => ns.print(l))
-  )
-}
-
-async function prettyOverview(ns: NS, timer) {
-  const prsm_target = peekyPorty(ns, "loop/prsm.js");
-  const gang_info = peekyPorty(ns, "loop/runGang.js");
-  const hacknet_info = readyFiley(ns, "temp/hacknet_info.txt");
-  const date = Number(new Date());
-  const last_aug_time = +readyFiley(ns, "temp/lastAugTime.txt") || date;
-
-  const colourise = (o) => o.lines.map((l) => [`<span style = "color:${o.col}" > ${l[0]} </span>`, `<span style="color:${o.col}">${l[1]}</span>`]);
-  const splitNBreak = (a, b) => [[a[0], b[0]].join("</br>"), [a[1], b[1]].join("</br>")];
-
-  (
-    [HOOKS[0].innerHTML, HOOKS[1].innerHTML] = [
-      {
-        lines: [
-          [`bitnode:`, `${await getCurrentNode(ns)}`],
-          [`pserv:`, `${sGet(ns).filter((s) => s.startsWith("#")).length}/${ns.getPurchasedServerLimit()}`],
-          [`w_d lvl:`, `${Math.round(3e3 * (await Run(ns, "getBitNodeMultipliers", [], "WorldDaemonDifficulty")))}`],
-          [`city:`, `${ns.getPlayer().city}`],
-          [`karma:`, `${ns.formatNumber(ns.heart.break())}`],
-        ],
-        col: "cyan",
-      },
-      {
-        lines: [
-          [`target:`, `${prsm_target}`],
-          [`$/s:`, `$${ns.formatNumber(ns.getScriptIncome("loop/prsm.js", undefined))}`],
-          [`$total:`, `$${ns.formatNumber(await Run(ns, "getMoneySources", [], "sinceInstall.hacking"))}`],
-          [`xp/s:`, `${ns.formatNumber(ns.getTotalScriptExpGain())}`],
-          [`scripts:`, `${sGet(ns).reduce((a, b) => a + ns.ps(b).length, 0)}`],
-        ],
-        col: "red",
-      },
-      {
-        lines: [
-          [`hN Servers:`, `${hacknet_info.num}`],
-          [`hashes/Max:`, `${hacknet_info.hashes}`],
-          [`hashes/s:`, `${ns.formatNumber(hacknet_info.prod)}`],
-          [`profit:`, `$${ns.formatNumber(hacknet_info.profit)}`],
-        ],
-        col: "green",
-      },
-      {
-        lines: [
-          [`status:`, `${gang_info?.cycle ?? "~"}`],
-          [`members:`, `${gang_info?.size ?? "~"}`],
-          [`power:`, `${ns.formatNumber(gang_info?.power ?? 0, 0)}/${ns.formatNumber(gang_info?.nextpower ?? 0, 0)}`],
-          [`territory:`, `${ns.formatNumber(gang_info?.territory ?? 0 * 100) ?? "~"}%`],
-          [`warfare?:`, `${gang_info?.tw ?? "~"}`],
-          [`profit:`, `$${ns.formatNumber((await Run(ns, "getMoneySources", [], "sinceStart.gang")) ?? 0)}`],
-        ],
-        col: "magenta",
-      },
-      {
-        lines: [
-          [`${util.tickString(timer)}`, `cycle #${Math.floor(timer / 30)}`],
-          [`gvnr uptime:`, `${util.digiClock(timer * 1e3)}`],
-          [`t+ Augbuy:`, `${!!(date - last_aug_time) ? util.digiClock(date - last_aug_time) : "N/A"}`],
-          [`t+ Install:`, `${util.digiClock(date - await Run(ns, "getResetInfo", [], "lastAugReset"))}`],
-          [`t+ Bitnode:`, `${util.digiClock(date - await Run(ns, "getResetInfo", [], "lastNodeReset"))}`],
-        ],
-        col: "yellow",
-      },
-    ]
-      .flatMap(colourise)
-      .reduce(splitNBreak)
-  )
-}
-
-async function scriptLoop(ns: NS, is_first_start: boolean) {
-  (
-    await CON.ONESHOT_FUNCTIONS.map((s) => `oneshot/${s}.js`).forEachAsync(
-      async (script: string) => (
-        is_first_start && ns.tprintf(`${util.ansi.y}starting ${script} `),
-        await (async (runpid: number): Promise<void> =>
-          !!runpid
-            ? (await ns.nextPortWrite(runpid),
-              is_first_start && (await util.slp(70 * Math.random()), ns.tprintf(`${util.ansi.g}${script} passed init`)))
-            : ns.tprintf(`${util.ansi.r} !!${script} DID NOT RUN!!`))(ns.run(script))
-      ),
-    ),
-    CON.LOOP_FUNCTIONS.map((s) => `loop/${s}.js`).forEach((script) => !ns.isRunning(script) && ns.run(script)),
-    is_first_start
+    (
+      (
+        sGet(ns).includes(wd)
+        && (await Run(ns, "getHackingLevel")) > (await Run(ns, "getServerRequiredHackingLevel", [wd]))
+      )
+      || (
+        ns.bladeburner.inBladeburner()
+        && !ns.bladeburner.getNextBlackOp()
+      )
+    )
     && (
-      ns.print(`${util.ansi.m} Welcome to gnvr.js!`),
-      ns.tprintf(`${util.ansi.g}*** Startup Complete *** `),
-      await util.slp(1e3),
-      ns.run("util/neofetch.js")
+      ["installCounter.txt", "installAugsReason.txt", "installAugsLog.txt"].map((f) => ns.rm(`temp/${f}`)),
+      ns.write("report/nodeLog.txt", `${await getCurrentNode(ns)} completed  - ${date.toLocaleTimeString()} ${date.toLocaleDateString()}`),
+      await Run(ns, "singularity.destroyW0r1dD43m0n", [12, "rset.js"])
     )
   )
 }
 
+function pServ(ns: NS) {
+  (
+    (
+      ns.purchaseServer("#", 8)
+      || [...Array(21).keys()].some(r =>
+        sGet(ns).some(s => ns.upgradePurchasedServer(s, 2 << r)
+        )
+      )
+    )
+    && pServ(ns)
+  )
+}
+
+function prettyLogs(ns: NS) {
+  return async () => {
+    const percColour = (perc) =>
+      `${perc < 33 ? util.ansi.r : perc < 66 ? util.ansi.y : perc < 85 ? util.ansi.c : util.ansi.g}${perc.padStart(6, " ")}%${util.ansi.d}`;
+    const secColour = (sec) => `${sec < 5 ? util.ansi.g : util.ansi.y}${("" + sec).padStart(3, " ")}${util.ansi.d}`;
+    const getInfo = (server) => [
+      Math.ceil(ns.getServerSecurityLevel(server)).toString().padStart(3, " "),
+      secColour(
+        Math.ceil(ns.getServerSecurityLevel(server) - ns.getServerMinSecurityLevel(server))
+          .toString()
+          .padStart(3, " ")
+      ),
+      ns.formatNumber(ns.getServerMoneyAvailable(server)).toString().padStart(8, " "),
+      ns.formatNumber(ns.getServerMaxMoney(server)).toString().padStart(8, " "),
+      percColour(((ns.getServerMoneyAvailable(server) / ns.getServerMaxMoney(server)) * 100).toFixed(2)),
+      util.digiClock(ns.getWeakenTime(server)),
+      server == peekyPorty(ns, "loop/prsm.js").target ? `${server} ${util.ansi.w}---${util.ansi.y}\u0394<` : server,
+    ];
+
+    const access_list = sGet(ns).filter(
+      (s) => ns.hasRootAccess(s) && ns.getServerRequiredHackingLevel(s) <= ns.getHackingLevel(),
+    );
+    const [funded_list, total_max_ram, total_free_ram] = access_list
+      .reduce(([funded, max_ram, free_ram], b) => [
+        [...funded, ns.getServerMaxMoney(b) ? b : null],
+        max_ram + ns.getServerMaxRam(b),
+        free_ram + getFreeRam(ns, b)],
+        [[], 0, 0]);
+    const [num_nfg, not_nfg, augs_sans_nfg] = (await Run(ns, "singularity.getOwnedAugmentations", [1])).slice((await Run(ns, "singularity.getOwnedAugmentations", [0])).length)
+      .reduce(([y_nfg, n_nfg, sans_nfg], aug) => aug == CON.NFG ? [y_nfg + 1, n_nfg, sans_nfg] : [y_nfg, n_nfg + 1, [...sans_nfg, aug]], [0, 0, []]);
+    const bought_aug_info = augs_sans_nfg.map((aug) => " \xB7" + aug).join("\n") + (num_nfg ? "\n \xB7 NeuroFlux Governor x" + num_nfg : "");
+    const num_other_augs = (await Run(ns, "singularity.getOwnedAugmentations", [0])).reduce((acc, aug) => acc + (aug != CON.NFG), 0);
+
+    (
+      ns.moveTail(CON.WIN.innerWidth - 1150, 0),
+      ns.resizeTail(800, 1e3),
+      ns.clearLog(),
+      [
+        ...[
+          ...funded_list.filter(Boolean).map(getInfo),
+          [
+            "sec",
+            " \u0394 ",
+            "  $cur  ",
+            "  $max  ",
+            "   %   ",
+            "  ~ete  ",
+            ` Target ~ ${funded_list.filter(Boolean).length}/${sGet(ns).filter(ns.getServerMaxMoney).length}`,
+          ],
+        ].map(((line) => ` ${line.join(" | ")}`)),
+        "",
+        ` home - ${util.ramFormat(getFreeRam(ns, "home"))}/${util.ramFormat(ns.getServerMaxRam("home"))}`,
+        ` network - ${util.ramFormat(total_free_ram)}/${util.ramFormat(total_max_ram)}`,
+        ` threads - ${ns.formatNumber(Math.floor(total_free_ram / ns.getScriptRam("weaken.js")))}/${ns.formatNumber(Math.floor(total_max_ram / ns.getScriptRam("weaken.js")))} threads`,
+        "",
+        ` bought augs x ${not_nfg}, ${num_other_augs}/100 installed, NFG x ${(await Run(ns, "getResetInfo", [], "ownedAugs")).get(CON.NFG)}`,
+        `${bought_aug_info}`,
+        ` ${readyFiley(ns, "temp/installAugsReason.txt")}`,
+        "",
+      ].forEach((l) => ns.print(l))
+    )
+  }
+}
+
+function prettyOverview(ns: NS) {
+  return (timer) => async () => {
+    const date = Number(new Date());
+    const gang_info = peekyPorty(ns, "loop/runGang.js");
+    const prsm_info = peekyPorty(ns, "loop/prsm.js");
+    const hacknet_info = readyFiley(ns, "temp/hacknet_info.txt");
+    const last_aug_time = +readyFiley(ns, "temp/lastAugTime.txt") || date;
+
+    const colourise = (([l_str, r_str]: [string, string], { data, col }) =>
+      (([l_lines, r_lines]) => [
+        [l_str, ...l_lines],
+        [r_str, ...r_lines]
+      ].map(r => r.join("</br>"))
+      )(data.reduce(([l_acc, r_acc], [l, r]) => [
+        [...l_acc, `<span style = "color:${col}" > ${l} </span>`],
+        [...r_acc, `<span style = "color:${col}" > ${r} </span>`]
+      ], [[], []]))
+    );
+
+    (
+      [HOOKS[0].innerHTML, HOOKS[1].innerHTML] = [
+        {
+          data: [
+            [`bitnode:`, `${await getCurrentNode(ns)}`],
+            [`pserv:`, `${sGet(ns).filter((s) => s.startsWith("#")).length}/${ns.getPurchasedServerLimit()}`],
+            [`w_d lvl:`, `${Math.round(3e3 * (await Run(ns, "getBitNodeMultipliers", [], "WorldDaemonDifficulty")))}`],
+            [`city:`, `${ns.getPlayer().city}`],
+            [`karma:`, `${ns.formatNumber(ns.heart.break())}`],
+          ],
+          col: "cyan",
+        },
+        {
+          data: [
+            [`target:`, `${prsm_info.target}`],
+            [`state:`, `${prsm_info.state}`],
+            [`$/s:`, `${util.cashFormat(ns, ns.getScriptIncome("loop/prsm.js", undefined))}`],
+            [`$total:`, `${util.cashFormat(ns, await Run(ns, "getMoneySources", [], "sinceInstall.hacking"))}`],
+            [`xp/s:`, `${ns.formatNumber(ns.getTotalScriptExpGain())}`],
+            [`scripts:`, `${sGet(ns).reduce((a, b) => a + ns.ps(b).length, 0)}`],
+          ],
+          col: "red",
+        },
+        {
+          data: [
+            [`hN Servers:`, `${hacknet_info.num}`],
+            [`hashes/Max:`, `${hacknet_info.hashes}`],
+            [`hashes/s:`, `${ns.formatNumber(hacknet_info.prod)}`],
+            [`profit:`, `${util.cashFormat(ns, hacknet_info.profit)}`],
+          ],
+          col: "green",
+        },
+        {
+          data: [
+            [`status:`, `${gang_info?.cycle ?? "~"}`],
+            [`members:`, `${gang_info?.size ?? "~"}`],
+            [`power:`, `${ns.formatNumber(gang_info?.power ?? 0, 0)}/${ns.formatNumber(gang_info?.nextpower ?? 0, 0)}`],
+            [`territory:`, `${ns.formatNumber(gang_info?.territory ?? 0 * 100) ?? "~"}%`],
+            [`warfare?:`, `${gang_info?.tw ?? "~"}`],
+            [`profit:`, `${util.cashFormat(ns, (await Run(ns, "getMoneySources", [], "sinceStart.gang")) ?? 0)}`],
+          ],
+          col: "magenta",
+        },
+        {
+          data: [
+            [`${util.tickString(timer)}`, `cycle #${Math.floor(timer / CON.CYCLE_RATE)}`],
+            [`gvnr uptime:`, `${util.digiClock(timer * 1e3)}`],
+            [`t+ Augbuy:`, `${!!(date - last_aug_time) ? util.digiClock(date - last_aug_time) : "N/A"}`],
+            [`t+ Install:`, `${util.digiClock(date - await Run(ns, "getResetInfo", [], "lastAugReset"))}`],
+            [`t+ Bitnode:`, `${util.digiClock(date - await Run(ns, "getResetInfo", [], "lastNodeReset"))}`],
+          ],
+          col: "yellow",
+        },
+      ].reduce(colourise, ["", ""])
+    )
+  }
+}
+
+function scriptLoop(ns: NS) {
+  return (is_first_start: boolean) => async () => {
+    (
+      await CON.ONESHOT_FUNCTIONS.map((s) => `oneshot/${s}.js`).forEachAsync(
+        async (script: string) => (
+          is_first_start && ns.tprintf(`${util.ansi.y}starting ${script} `),
+          await (async (runpid: number): Promise<void> =>
+            !!runpid
+              ? (await ns.nextPortWrite(runpid),
+                is_first_start && (await util.slp(70 * Math.random())(), ns.tprintf(`${util.ansi.g}${script} passed init`)))
+              : ns.tprintf(`${util.ansi.r} ${script} did not run`))(ns.run(script))
+        ),
+      ),
+      CON.LOOP_FUNCTIONS.map((s) => `loop/${s}.js`).forEach((script) => !ns.isRunning(script) && ns.run(script)),
+      is_first_start
+      && (
+        ns.print(`${util.ansi.m} Welcome to gnvr.js!`),
+        ns.tprintf(`${util.ansi.g}*** Startup Complete *** `),
+        await util.slp(1e3)(),
+        ns.run("util/neofetch.js")
+      )
+    )
+  }
+}
+
 async function graft(ns: NS, g = ns.grafting) {
-  !(await is_Busy(ns)) &&
-    ns.singularity.travelToCity("New Tokyo")
+  (
+    !(await is_Busy(ns))
+    && ns.singularity.travelToCity("New Tokyo")
     && [
       "QLink",
       "ECorp HVMind Implant",
       "Xanipher",
       "OmniTek InfoLoad",
       "violet Congruity Implant"
-    ].some(
-      (aug) => g.graftAugmentation(aug, false)
-    );
+    ].some(aug => g.graftAugmentation(aug, false))
+  )
 }
 
 async function factWork(ns: NS, s = ns.singularity) {
@@ -645,18 +685,19 @@ async function donate(ns: NS, s = ns.singularity) {
   ns.ps().filter(s => s.filename)
   const availableAugs = readyFiley(ns, "temp/availableAugs.txt");
   const rep_multi = await Run(ns, "getBitNodeMultipliers", [], "RepToDonateToFaction");
-  const nfginfo = readyFiley(ns, "temp/nfgInfo.txt");
+  const nfginfo = {
+    cost: await Run(ns, "singularity.getAugmentationPrice", [CON.NFG]),
+    rep: await Run(ns, "singularity.getAugmentationRepReq", [CON.NFG]),
+  };
   const donatefaction = "The Black Hand";
+
   (
-    // Donate to TBH to grind NF Governor
     s.getFactionFavor(donatefaction) >= 150 * rep_multi
     && s.getFactionRep(donatefaction) < nfginfo.rep
     && s.donateToFaction(donatefaction, Math.max(nfginfo.cost, 1e11))
     && ns.tprintf(
-      `${util.ansi.m}Donated $${ns.formatNumber(Math.max(nfginfo.cost, 1e11))} to ${donatefaction} (grinding NFG)`,
+      `${util.ansi.m}Donated ${util.cashFormat(ns, Math.max(nfginfo.cost, 1e11))} to ${donatefaction} (grinding NFG)`
     ),
-
-    // Donate to factions for augs
     availableAugs.forEach((aug) => (
       aug.fact.name != CON.GANG_NAME
       && s.getFactionFavor(aug.fact.name) > 150 * rep_multi
@@ -669,24 +710,21 @@ async function donate(ns: NS, s = ns.singularity) {
 
 async function installAugs(ns: NS) {
   const date = Number(new Date());
-  const timestamp = Date().slice(4, 24);
   const augs_array = readyFiley(ns, "temp/availableAugs.txt").filter((aug) => aug.fact.name != CON.GANG_NAME);
-  const bought_augs = readyFiley(ns, "temp/boughtAugs.txt");
+  const bought_augs = (await Run(ns, "singularity.getOwnedAugmentations", [1])).slice((await Run(ns, "singularity.getOwnedAugmentations", [0])).length);
   const time_since_last_aug = date - +(readyFiley(ns, "temp/lastAugTime.txt") ?? date);
-  const lowest_price = augs_array.reduce((a, b) => (a.aug != CON.TRP && a?.price < b?.price ? a : b), Infinity)?.price ?? 0;
+  const lowest_price = augs_array.reduce((a, b) => (a.aug != CON.TRP && a < b.price ? a : b.price), Infinity)?.price ?? 0;
   const fav_to_donate = 150 * (await Run(ns, "getBitNodeMultipliers", [], "RepToDonateToFaction"));
+  const price_ratio = Math.floor((await Run(ns, "singularity.getAugmentationPrice", ["Combat Rib I"])) / (await Run(ns, "singularity.getAugmentationBasePrice", ["Combat Rib I"])));
 
-  const timeout_log =
-    `timeout - $${ns.formatNumber(ns.getServerMoneyAvailable("home"))} /$${ns.formatNumber(lowest_price)}, multi x${Math.floor(+readyFiley(ns, "temp/priceRatio.txt"))} - ${timestamp}`;
-  const favour_log = (aug) =>
-    `increased ${aug.fact.name} favour by ${Math.floor(aug.fact.favdelta)} to ${Math.floor(aug.fact.favdelta + aug.fact.fav)} - ${timestamp}`;
+  const timeout_log = `timeout - ${[ns.getServerMoneyAvailable("home"), lowest_price].map(util.cashFormat.bind(null, ns)).join("/")}, multi x${price_ratio}`;
+  const favour_log = fact => `increased ${fact.name} favour by ${Math.floor(fact.favdelta)} to ${Math.floor(fact.favdelta + fact.fav)}`;
 
   const checkFavour = () =>
-    augs_array.some(
-      aug =>
-        aug.fact.fav < fav_to_donate
-        && (aug.fact.favdelta >= 50 || fav_to_donate < aug.fact.favdelta + aug.fact.fav)
-        && (writeLog(favour_log(aug)), true)
+    augs_array.some(aug =>
+      aug.fact.fav < fav_to_donate
+      && (aug.fact.favdelta >= 50 || fav_to_donate < aug.fact.favdelta + aug.fact.fav)
+      && (writeLog(favour_log(aug.fact)), true)
     );
 
   const checkTimeout = () =>
@@ -694,11 +732,11 @@ async function installAugs(ns: NS) {
     && lowest_price > ns.getServerMoneyAvailable("home")
     && (writeLog(timeout_log), true);
 
-  const writeLog = (log) => (
-    ns.write("temp/installAugsReason.txt", `installAugs #${1 + +readyFiley(ns, "temp/installCounter.txt")}: ${log}`, "w")
-  );
+  const writeLog = (log: string) =>
+    ns.write("temp/installAugsReason.txt", `installAugs #${1 + +readyFiley(ns, "temp/installCounter.txt")}: ${log} - ${Date().slice(4, 24)}`, "w");
 
   (
+    !(await Run(ns, "fileExists", ["temp/installCounter.txt"])) && ns.write("temp/installCounter.txt", "0", "w"),
     bought_augs.includes(CON.TRP) && (writeLog("installed The Red Pill"), await Run(ns, "singularity.softReset", ["rset.js"])), // if have TRP then install asap
     !(await is_Busy(ns))
     && !!bought_augs.length
@@ -716,56 +754,31 @@ function buyAugs(ns: NS, s = ns.singularity) {
   const availableAugs = readyFiley(ns, "temp/availableAugs.txt");
 
   const timeStamp = () => ns.write("temp/lastAugTime.txt", "" + Date.now(), "w");
-  const termPrint = (aug) =>
+  const termPrint = (aug, faction, price) =>
     ns.tprintf(
-      `${util.ansi.m}Purchased ${util.ansi.c}${aug.aug}${util.ansi.m} from ${aug.fact.name} for $${ns.formatNumber(aug.price)}`,
-    );
-  const termPrintNFG = (faction) =>
-    ns.tprintf(
-      `${util.ansi.m}Purchased ${util.ansi.c}${CON.NFG}${util.ansi.m} from ${faction} for $${ns.formatNumber(s.getAugmentationPrice(CON.NFG))}`,
+      `${util.ansi.m}Purchased ${util.ansi.c}${aug}${util.ansi.m} from ${faction} for ${util.cashFormat(ns, price)}`,
     );
 
   (
     ns.getPlayer().factions
-      .forEach((f) =>
-        f != CON.GANG_NAME
-        && s.purchaseAugmentation(f, CON.NFG)
-        && (timeStamp(), termPrintNFG(f)),
+      .forEach(fact =>
+        fact != CON.GANG_NAME
+        && s.purchaseAugmentation(fact, CON.NFG)
+        && (timeStamp(), termPrint(CON.NFG, fact, ns.singularity.getAugmentationPrice(CON.NFG))),
       ),
-    availableAugs.forEach((aug) =>
+    availableAugs.forEach(aug =>
       s.purchaseAugmentation(aug.fact.name, aug.aug)
-      && (timeStamp(), termPrint(aug))
+      && (timeStamp(), termPrint(aug.aug, aug.fact.name, aug.price))
     ),
-    odd_factions.forEach((fac) =>
-      s.getAugmentationsFromFaction(fac).forEach((aug) => s.purchaseAugmentation(fac, aug)),
+    odd_factions.forEach(fac =>
+      s.getAugmentationsFromFaction(fac).forEach(aug => s.purchaseAugmentation(fac, aug)),
     )
   )
 }
 
-async function ownedAugs(ns: NS) {
-  const wrt = async (file, data) => await Run(ns, "write", [file, JSON.stringify(data), "w"]);
-  !(await Run(ns, "fileExists", ["temp/installCounter.txt"])) && wrt("temp/installCounter.txt", 0),
-    wrt(
-      "temp/boughtAugs.txt",
-      (await Run(ns, "singularity.getOwnedAugmentations", [1])).slice(
-        (await Run(ns, "singularity.getOwnedAugmentations", [0])).length,
-      ),
-    ),
-    wrt(
-      "temp/priceRatio.txt",
-      (await Run(ns, "singularity.getAugmentationPrice", ["Combat Rib I"]))
-      / (await Run(ns, "singularity.getAugmentationBasePrice", ["Combat Rib I"])),
-    ),
-    wrt("temp/ownedAugs.txt", await Run(ns, "singularity.getOwnedAugmentations", [1])),
-    wrt("temp/installedAugs.txt", await Run(ns, "singularity.getOwnedAugmentations", [0])),
-    wrt("temp/nfgInfo.txt", {
-      cost: await Run(ns, "singularity.getAugmentationPrice", [CON.NFG]),
-      rep: await Run(ns, "singularity.getAugmentationRepReq", [CON.NFG]),
-    });
-}
 
 async function availableAugs(ns: NS, s = ns.singularity) {
-  const owned_augs = readyFiley(ns, "temp/ownedAugs.txt");
+  const owned_augs = await Run(ns, "singularity.getOwnedAugmentations", [1]);
   const forbidden_factions = ["Shadows of Anarchy", "Bladeburners", "Church of the Machine God"];
   const aug_object = ns.getPlayer().factions
     .filter((faction) => !forbidden_factions.includes(faction))
@@ -786,18 +799,21 @@ async function availableAugs(ns: NS, s = ns.singularity) {
           }
         ))
     ));
+
   ns.write("temp/availableAugs.txt", JSON.stringify(aug_object ?? []), "w");
 }
 
 async function backdoor(n: NS) {
-  ["CSEC", "avmnite-02h", "run4theh111z", "I.I.I.I"].map(n.getServer).forEach(
-    (s) =>
-      !s.backdoorInstalled
-      && s.hasAdminRights
-      && n.getHackingLevel() > s.requiredHackingSkill
-      && !n.isRunning("util/bd.js", "home", s.hostname)
-      && n.run("util/bd.js", { threads: 1, ramOverride: 5.8 }, s.hostname),
-  );
+  (
+    ["CSEC", "avmnite-02h", "run4theh111z", "I.I.I.I"].map(n.getServer).forEach(
+      (s) =>
+        !s.backdoorInstalled
+        && s.hasAdminRights
+        && n.getHackingLevel() > s.requiredHackingSkill
+        && !n.isRunning("util/bd.js", "home", s.hostname)
+        && n.run("util/bd.js", { threads: 1, ramOverride: 5.8 }, s.hostname),
+    )
+  )
 }
 
 function hacknetShindigs(ns: NS, h = ns.hacknet) {
@@ -845,47 +861,49 @@ function hacknetShindigs(ns: NS, h = ns.hacknet) {
 }
 
 async function steves(ns: NS) {
-  const [s, b] = [ns.sleeve, ns.bladeburner];
-  const steves = util.getIndexArray(8).sort((a, b) => s.getSleeve(b).storedCycles - s.getSleeve(a).storedCycles);
+  const steves = (await util.getIndexArray(8).mapAsync(async s => [s, await Run(ns, "sleeve.getSleeve", [s], "storedCycles")])).sort((a, b) => b[1] - a[1]).map(r => r[0]);
 
-  const get_low_skill = steve =>
-    ["strength", "defense", "dexterity", "agility"].reduce(
-      (a, skill) => (steve.skills[skill] < 25 ? skill : a),
-      false,
-    );
+  const get_low_skill = (steve: SleevePerson) => ["strength", "defense", "dexterity", "agility"].reduce((a, skill) =>
+    (steve.skills[skill] < 25 ? skill : a),
+    false);
 
-  const try_train = async steve => (
-    await (async skill => skill && (await Run(ns, "sleeve.travel", [steve, "Sector-12"]), await Run(ns, "sleeve.setToGymWorkout", [steve, "Powerhouse Gym", skill.toString()])))(get_low_skill(await Run(ns, "sleeve.getSleeve", [steve])))
-  );
+  const try_train = async (steve: number) =>
+    await (async skill =>
+      skill
+      && (
+        await Run(ns, "sleeve.travel", [steve, "Sector-12"]),
+        await Run(ns, "sleeve.setToGymWorkout", [steve, "Powerhouse Gym", skill.toString()])
+      )
+    )(get_low_skill(await Run(ns, "sleeve.getSleeve", [steve])));
 
-  const try_stabbin = async (steve) => !(await Run(ns, "gang.inGang") ? await Run(ns, "sleeve.setToCommitCrime", [steve, "Homicide"]) : false);
+  const try_stabbin = async (steve: number) => !(await Run(ns, "gang.inGang") ? await Run(ns, "sleeve.setToCommitCrime", [steve, "Homicide"]) : false);
 
-  const bb_infil = async steve => (
-    await !steves.everyAsync(async steve => (await Run(ns, "sleeve.getTask", [steve])).some((task) => task?.type === "INFILTRATE"))
-    && await Run(ns, "sleeve.setToBladeburnerAction", [steve, "Infiltrate synthoids"])
-  );
+  const bb_infil = async (steve: number) =>
+    !(await steves.someAsync(async (steve: number) => (await Run(ns, "sleeve.getTask", [steve], "type")) == "INFILTRATE"))
+    && await Run(ns, "sleeve.setToBladeburnerAction", [steve, "Infiltrate synthoids"]);
 
-  const bb_contracts = async steve => (
+  const bb_contracts = async (steve: number) =>
     (await Run(ns, "bladeburner.getContractNames"))
-      .someAsync(async contract => await steves.everyAsync(async steve => (await Run(ns, "sleeve.getTask", [steve]) as SleeveBladeburnerTask)?.actionName !== contract)
+      .someAsync(async (contract: string) =>
+        await steves.everyAsync(async (steve: number) => (await Run(ns, "sleeve.getTask", [steve], "actionName") !== contract))
         && await Run(ns, "bladeburner.getActionCountRemaining", ["Contract", contract])
         && await Run(ns, "sleeve.setToBladeburnerAction", [steve, "Take on contracts", contract]),
-      )
-  );
+      );
 
-  const buy_augs = async steve => (
+
+  const buy_augs = async (steve: number) =>
     !(await Run(ns, "sleeve.getSleeve", [steve])).shock ?
       (await Run(ns, "sleeve.getSleevePurchasableAugs", [steve]))
         .sort((a, b) => a.cost - b.cost)
         .forEachAsync(async (aug) => await Run(ns, "sleeve.purchaseSleeveAug", [steve, aug.name]))
-      : false
-  );
+      : false;
+
 
   (
     await steves.forEachAsync(async (steve) => await Run(ns, "sleeve.setToIdle", [steve])),
     await steves.forEachAsync(async (steve) => (
-      !(await Run(ns, "sleeve.getSleeve", [steve])).shock && await buy_augs(steve),
-      (await Run(ns, "sleeve.getSleeve", [steve])).shock > 90
+      await buy_augs(steve)
+      || ((await Run(ns, "sleeve.getSleeve", [steve])).shock > 90
         ? await Run(ns, "sleeve.setToShockRecovery", [steve])
         : await try_train(steve)
         || await try_stabbin(steve)
@@ -893,7 +911,7 @@ async function steves(ns: NS) {
         || ((await Run(ns, "sleeve.getSleeve", [steve])).shock
           ? await Run(ns, "sleeve.setToShockRecovery", [steve])
           : await Run(ns, "sleeve.setToIdle", [steve]))
-    ))
+      )))
   )
 }
 
@@ -941,13 +959,14 @@ async function stan(ns: NS, s = ns.stanek) {
     .activeFragments()
     .filter((f) => f.id < 100)
     .reduce((a, b) => (a.numCharge < b.numCharge ? a : b), { numCharge: NaN, x: NaN, y: NaN });
+
   (
     !!target &&
     (spare_threads > 0 && !isNaN(target.numCharge)
       ? ns.exec("chrg.js", "home", spare_threads, target.x, target.y)
       : ns.print("no threads! skipping...")),
     ns.writePort(ns.pid, ""),
-    await util.slp(1e4),
+    await util.slp(1e4)(),
     await stan(ns)
   )
 }
@@ -958,33 +977,26 @@ async function runGang(n, g = n.gang) {
       ? tryRecruit()
       : g.recruitMember(name) && n.tprintf(`${util.ansi.r}Recruited ${util.ansi.g}${name}`)
   );
-
   const setTW = () =>
     g.setTerritoryWarfare(Object.keys(other_gang_info()).every((h) => g.getChanceToWinClash(h) >= 0.5));
-
   const slp = async (t) => await n.sleep(t / (g.getBonusTime() > 5e3 ? 25 : 1));
-
   const other_gang_info = g.getOtherGangInformation;
-
   const tick = async (l = null) => (
     await (async q => (l = q(), await n.sleep(50), l == q() && (await tick())))(() => Object.values(other_gang_info()).reduce((a: number, b: GangOtherInfoObject) => a + b.power, 0))
   );
-
   const focus = () => (g.getMemberNames().length > 9 ? "moneyGain" : "respectGain");
-
   const assignJob = (task) => (
     g.getMemberNames().forEach(
       (member) => (
         g.getEquipmentNames().forEach((item) => g.purchaseEquipment(member, item)),
-        ["agi", "str", "def", "dex"].reduce((a, b) => a + g.getAscensionResult(member)?.[b], 0) > 6 && g.ascendMember(member),
         g.setMemberTask(
           member,
           task ?? g.getTaskNames().reduce(
             (a, b) => (
               g.setMemberTask(member, b),
-              ((gain) => (gain < a.dat ? a : { name: b, dat: gain }))(g.getMemberInformation(member)[focus()])
+              ((gain) => (gain < a.gain ? a : { b, gain }))(g.getMemberInformation(member)[focus()])
             ),
-          ).name,
+          ).b,
         )
       ),
     ),
@@ -1029,8 +1041,7 @@ async function golfedGang(
   t = async (l) => (l = q()[1], await n.sleep(9), l == q()[1] && await t(l)),
   q = () => Object.entries(g.getOtherGangInformation()).reduce((a: [boolean, number], [b, c]: [string, GangOtherInfoObject]): [boolean, number] => [g.getChanceToWinClash(b) > 0.5 && a[0], a[1] + c.power], [false, 0]),
   a = (j) =>
-    g
-      .getMemberNames()
+    g.getMemberNames()
       .map(
         (m) => (
           g.getEquipmentNames().map((i) => g.purchaseEquipment(m, i)),
@@ -1038,7 +1049,7 @@ async function golfedGang(
           g.setMemberTask(
             m,
             j ?? g.getTaskNames().reduce((a, b) =>
-              (g.setMemberTask(m, b), (i) => (i < a.g ? a : { n: b, g: i }))(
+              (g.setMemberTask(m, b), (i) => (i < a.i ? a : { b, i }))(
                 g.getMemberInformation(m)[g.getMemberNames().length > 9 ? "moneyGain" : "respectGain"],
               ),
             ).n,
@@ -1062,11 +1073,98 @@ async function golfedGang(
   )
 }
 
+async function prsm(ns: NS, isPrepped = false) {
+  function checkPrepped(target) { return target.moneyMax * 0.9 < target.moneyAvailable && target.minDifficulty + 3 > target.hackDifficulty; }
+
+  function writeWorkers() {
+    ["hack", "grow", "weaken"].forEach(
+      (script) => (
+        !ns.fileExists(script) &&
+        ns.write(
+          `${script}.js`,
+          `export const main = async ns => (ns.atExit(() => ns.writePort(ns.pid, "")), await ns.${script}(ns.args[0], { additionalMsec: ns.args[1] }))`,
+          "w",
+        ),
+        sGet(ns).forEach((server) => ns.scp(`${script}.js`, server))
+      ),
+    );
+  }
+
+  function batch(ns: NS, target, host_list) {
+
+    const questionable = Object.entries(
+      (([nhack, ngrow]) => [nhack, ngrow, Math.ceil(nhack * 0.04), Math.ceil(nhack * 0.08)])((nhack => [nhack, Math.ceil(ns.growthAnalyze(target.hostname, 1 / (1 - (ns.formulas.hacking.hackPercent(target, ns.getPlayer()) * nhack))))])(Math.max(~~ns.hackAnalyzeThreads(target.hostname, target.moneyMax * 0.01), 1)))
+    );
+
+    const nhack = Math.max(~~ns.hackAnalyzeThreads(target.hostname, target.moneyMax * 0.01), 1);
+    const ngrow = 10 + Math.ceil(ns.growthAnalyze(target.hostname, 1 / (1 - (ns.formulas.hacking.hackPercent(target, ns.getPlayer()) * nhack))));
+    const hweaken = Math.ceil(nhack * 0.04);
+    const gweaken = Math.ceil(nhack * 0.08);
+    const job_ents = Object.entries({ nhack, hweaken, ngrow, gweaken });
+    const batch_ram_total = job_ents.reduce((r, [k, v]) => r + ns.getScriptRam(k.slice(1) + ".js") * v, 0);
+
+    (
+      host_list.map(host => ({
+        host: host,
+        batch: job_ents.map(([key, val]) => (
+          {
+            scr: key.slice(1) + ".js",
+            thr: val * ~~((ns.getServerMaxRam(host) - ns.getServerUsedRam(host) - (host == "home" ? 100 : 0)) / batch_ram_total),
+            buff: ns.getWeakenTime(target.hostname) - ns["get" + [key.slice(1, 2).toUpperCase(), ...key.slice(2)].join("") + "Time"](target.hostname)
+          }
+        ))
+      }))
+        .filter(({ batch }) => batch.map(({ thr }) => thr).every(Boolean))
+        .forEach(({ host, batch }) => batch.forEach(({ scr, thr, buff }) => ns.exec(scr, host, thr, target.hostname, buff)))
+    )
+  }
+
+  function prep(ns: NS, target, host_list): number {
+    const reqWeaken = ~~((target.hackDifficulty - target.minDifficulty) / ns.weakenAnalyze(1));
+    const reqGrow = Math.ceil(ns.growthAnalyze(target.hostname, target.moneyMax / target.moneyAvailable));
+
+    const send = (script, req): number[] =>
+      host_list.reduce(([last_pid, n], host) =>
+        n >= req
+          ? [last_pid, n]
+          : (
+            threads => threads > 0
+              ? [ns.exec(script + ".js", host, threads, target.hostname), n + threads]
+              : [last_pid, n]
+          )(~~((ns.getServerMaxRam(host) - ns.getServerUsedRam(host) - (host == "home" ? 100 : 0)) / ns.getScriptRam(script + ".js"))
+          ),
+        [NaN, 0]
+      );
+    return Math.max(...[
+      send("weaken", reqWeaken)[0],
+      send("grow", reqGrow)[0]
+    ])
+  }
+
+  const host_list = sGet(ns).filter((server) => ns.getServerMaxRam(server) && ns.hasRootAccess(server) && !server.includes("hacknet"));
+  const target = ns.getServer(sGet(ns).reduce((a, b, rank: any) =>
+  (rank = s => ns.getServerMaxMoney(s) / ns.getServerMinSecurityLevel(s),
+    ns.hasRootAccess(b) && ns.getServerRequiredHackingLevel(b) <= ns.getHackingLevel() / 2 && rank(a) < rank(b) ? b : a),
+    "n00dles"
+  ));
+  isPrepped = checkPrepped(ns.getServer(target.hostname));
+  (
+    ns.ramOverride(20),
+    writeWorkers(),
+    isPrepped
+      ? batch(ns, target, host_list)
+      : prep(ns, target, host_list),
+    ns.writePort(ns.pid, { target: target.hostname, state: isPrepped ? "batch" : "prep" }),
+    await ns.sleep(ns.getWeakenTime(target.hostname)),
+    await prsm(ns, checkPrepped(ns.getServer(target.hostname)))
+  )
+}
+
 type PlayerExp = {
   hacking: number;
 }
 
-async function prsm(ns: NS) {
+async function prsm2(ns: NS) {
   ns.disableLog("ALL");
   ns.enableLog("exec");
   const hack_percentage = 0.01;
@@ -1122,11 +1220,10 @@ async function prsm(ns: NS) {
       }),
     )!;
     const clamp = (n) => (n < 1 || n == Infinity ? 1 : n);
-    const hack_jobs = 1;
-    const grow_jobs =
-      1 + ns.growthAnalyze(target.hostname, 1 / (1 - ns.formulas.hacking.hackPercent(target, run_p_obj) * hack_jobs));
+    const hack_jobs = Math.max(~~ns.hackAnalyzeThreads(target.hostname, target.moneyMax * 0.01), 1);
+    const grow_jobs = Math.ceil(ns.growthAnalyze(target.hostname, 1 / (1 - (ns.formulas.hacking.hackPercent(target, ns.getPlayer()) * hack_jobs))));
     const sec_jobs = (target.hackDifficulty - target.minDifficulty) / ns.weakenAnalyze(1);
-    const wekn_jobs = sec_jobs + hack_jobs * 0.04 + grow_jobs * 0.08;
+    const wekn_jobs = Math.ceil(sec_jobs + hack_jobs * 0.04 + grow_jobs * 0.08);
     const batch_total = hack_jobs + grow_jobs + wekn_jobs;
     const squish = (script, jobs) =>
       Math.floor(batch_total > getAvailableThreads(script) ? jobs * (getAvailableThreads(script) / batch_total) : jobs);
@@ -1163,7 +1260,7 @@ async function prsm(ns: NS) {
     );
     ns.clearPort(ns.pid),
       ns.writePort(ns.pid, target.hostname),
-      await util.slp(batch_delay),
+      await util.slp(batch_delay)(),
       await runLoop(batch_complete_p_obj);
   }
   await runLoop(await Run(ns, "getPlayer"));
@@ -1209,14 +1306,14 @@ async function neofetch(ns: NS) {
   ];
 
   (
-    await ascii.forEachAsync(async l => (ns.tprintf(l), await util.slp(Math.random() * 10 * 7)))
+    await ascii.forEachAsync(async l => (ns.tprintf(l), await util.slp(Math.random() * 10 * 7)()))
   )
 }
 
 
 
 /** @param {NS} ns */
-function checkBounds(ns, t) {
+function checkBounds(ns: NS, t) {
   let returnval = { x: 0, y: 0 },
     x = t.x,
     y = t.y,
@@ -1231,7 +1328,6 @@ function checkBounds(ns, t) {
   return returnval;
 }
 
-
 function zoomieCalc(d: number): number {
   return d > 500
     ? 1.2
@@ -1244,14 +1340,10 @@ function zoomieCalc(d: number): number {
           : 2; // Excited mode!
 }
 
-function poopCheck(ns, timestamp, happiness) {
+function poopCheck(ns: NS, timestamp, happiness) {
   if (timestamp + 60000 < +(new Date())) return happiness;
   return happiness - ns.ps().filter(p => p.filename === "poop.js").length
 }
-
-
-
-
 
 async function downDog(ns: NS, prevposx: number, prevposy: number) {
   function poop(ns: NS, x: number, y: number, pooppid: number) {
@@ -1263,7 +1355,7 @@ async function downDog(ns: NS, prevposx: number, prevposy: number) {
       ns.moveTail(x, y, pooppid)
     )
   }
-  function step(ns, zoomievalue, target, bool = 1, randbool = true) {
+  function step(ns: NS, zoomievalue, target, bool = 1, randbool = true) {
     let screenratio = win.innerHeight / win.innerWidth,
       x = tget(ns).x,
       y = tget(ns).y;
@@ -1285,7 +1377,7 @@ async function downDog(ns: NS, prevposx: number, prevposy: number) {
   const tget = (ns) => ns.getRunningScript().tailProperties ?? ns.exit()
   const names = ["Wickes", "Updog", "Mikasa", "Snuffles", "Boris", "Gnasher", "Doug", "Chester"]
   const bark = (ns, bark) => ns.print(bark);
-  async function portHandle(ns, barkval, happiness) {
+  async function portHandle(ns: NS, barkval, happiness) {
     if (ns.peek(ns.pid) === "NULL PORT DATA") return { bark: undefined, happiness: happiness };
     ns.clearPort(ns.pid)
     barkval = { bark: "*WAGS\nTAIL*", time: 1500 }
@@ -1312,7 +1404,7 @@ async function downDog(ns: NS, prevposx: number, prevposy: number) {
     const [x, y] = [tget(ns).x, tget(ns).y - 50] // centre on the box
     let delay = 100
     let zoomievalue = zoomieCalc(ticker);
-    const ascii = pos.x > x ? CON.DOGGO_ASCII[0] : CON.DOGGO_ASCII[1];
+    const ascii = pos.x > x ? CON.DOGGO_ASCII[1] : CON.DOGGO_ASCII[0];
     let dvar = step(ns, zoomievalue, pos);
     let porthandlereturn = await portHandle(ns, delay, happiness)
     let barkval = porthandlereturn?.bark;
@@ -1331,7 +1423,7 @@ async function downDog(ns: NS, prevposx: number, prevposy: number) {
       ns.print(`happiness: ${Math.round(happiness / 1000)}`)
     }
     if (zoomievalue && rn() * 1000 < 1) poop(ns, x, y + 150, undefined);
-    ns.print(barkval === undefined ? ascii : bark(ns, barkval.bark));
+    ns.print(barkval === undefined ? ascii.join("\n") : bark(ns, barkval.bark));
     ns.resizeTail(250, 200)
     ns.moveTail(dvar.dx, dvar.dy);
     barkval == undefined ? await ns.sleep(delay) : await ns.sleep(barkval.time)
@@ -1391,25 +1483,13 @@ export async function main(ns) {
 // For most of these, credit Brandon - https://discord.com/channels/415207508303544321/924854581471633419/1134454548577144903
 
 const solvers = {
-  "Find Largest Prime Factor": function (number, divisor = 2) {
-    return 0;
+  "Find Largest Prime Factor": function (num, div = 2) {
+    while (num > 1) num % div ? div++ : num /= div;
+    return div;
   },
 
-  "Subarray with Maximum Sum": function (array) {
-    const size = array.length;
-    const maxint = Math.pow(2, 53);
-    let max_so_far = -maxint - 1;
-    let max_ending_here = 0;
-    for (let i = 0; i < size; i++) {
-      max_ending_here = max_ending_here + array[i];
-      if (max_so_far < max_ending_here) {
-        max_so_far = max_ending_here;
-      }
-      if (max_ending_here < 0) {
-        max_ending_here = 0;
-      }
-    }
-    return max_so_far;
+  "Subarray with Maximum Sum": function (arr) {
+    return Math.max(...arr.flatMap((_, i) => arr.slice(i).reduce((r, b, i) => [...r, b + r[i]], [0])))
   },
 
   "Total Ways to Sum": function (number) {
@@ -1437,6 +1517,8 @@ const solvers = {
   },
 
   "Spiralize Matrix": function (matrix) {
+
+
     let startRow = 0;
     let endRow = matrix.length - 1;
     let startColumn = 0;
@@ -1475,18 +1557,8 @@ const solvers = {
     return newArray;
   },
 
-  "Array Jumping Game": function (array) {
-    let farthestPosition = 0;
-    for (let i = 0; i < array.length; i++) {
-      if (i > farthestPosition) {
-        return 0;
-      }
-      farthestPosition = Math.max(farthestPosition, i + array[i]);
-      if (farthestPosition >= array.length - 1) {
-        return 1;
-      }
-    }
-    return 0;
+  "Array Jumping Game": function (a) {
+    return +!!a.reduce((r, b, i) => r < i ? 0 : r > b + i ? r : b + i, 0)
   },
 
   "Array Jumping Game II": function (array) {
@@ -2027,22 +2099,15 @@ const solvers = {
   },
 
   "Encryption I: Caesar Cipher": function ([text, i]) {
-    return String.fromCharCode(...[...text].map(c => c > " " ? (o => o + (o > 65 ? 0 : 26))(c.charCodeAt() - i) : 32))
+    return String.fromCharCode(...[...text].map(c => (n => (n < 32 ? i : n < 65 ? 26 : 0) + n)(c.charCodeAt() - i)));
   },
 
-  "Encryption II: Vigen\xE8re Cipher": function ([plaintext, keyword]) {
-    plaintext = plaintext.replace(/\s/g, "").toUpperCase();
-    keyword = keyword.repeat(Math.ceil(plaintext.length / keyword.length)).substr(0, plaintext.length);
-    let vigenereSquare = Array.from({ length: 26 }, (_, i) => {
-      return Array.from({ length: 26 }, (_2, j) => String.fromCharCode((i + j) % 26 + 65));
-    });
-    let ciphertext = "";
-    for (let i = 0; i < plaintext.length; i++) {
-      let row = plaintext.charCodeAt(i) - 65;
-      let col = keyword.charCodeAt(i) - 65;
-      ciphertext += vigenereSquare[row][col];
-    }
-    return ciphertext;
+  "Encryption II: Vigen\xE8re Cipher": function (
+    a,
+    [s, k] = a.map(s => [...s].map(c => c.charCodeAt() - 65)),
+    v = [...Array(26).keys()].map((i, _, a) => a.map(j => (i + j) % 26 + 65))
+  ) {
+    return String.fromCharCode(...s.map((n, i) => v[n][k[i % k.length]]));
   }
 }
 
@@ -2051,7 +2116,7 @@ function contracts(ns: NS) {
   sGet(ns).flatMap(host => ns.ls(host, ".cct").map(cct => ([host, cct, ns.codingcontract.getContractType(cct, host)]))).forEach(([host, cct, type]) => (
     (result => result
       ? ns.tprintf(`${util.ansi.g}Completed ${type} ~ ${cct} on ${host} ~ ${result}`)
-      : ns.tprintf(`${util.ansi.r}Failed ${type} ~ ${cct} on ${host}`)
+      : (ns.tprintf(`${util.ansi.r}Failed ${type} ~ ${cct} on ${host}`), ns.rm(cct, host))
     )(ns.codingcontract.attempt(solvers[ns.codingcontract.getContractType(cct, host)](ns.codingcontract.getData(cct, host)), cct, host)
     )))
 }
